@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@xstate/store':
-        specifier: link:../xstate-fork/packages/xstate-store
-        version: link:../xstate-fork/packages/xstate-store
+        specifier: link:../xstate/packages/xstate-store
+        version: link:../xstate/packages/xstate-store
       solid-js:
         specifier: ^1.8.21
         version: 1.8.22

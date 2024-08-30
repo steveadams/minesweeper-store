@@ -1,4 +1,4 @@
-import { CellCoordinates, GameSnapshot, GameState } from "./store";
+import { CellCoordinates, GameSnapshot } from "./types";
 
 export const selectGameStatus = (s: GameSnapshot) => s.context.gameStatus;
 

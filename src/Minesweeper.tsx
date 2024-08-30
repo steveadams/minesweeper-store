@@ -1,16 +1,18 @@
 import type { Component } from "solid-js";
-import type { Cell, CellCoordinates } from "./store";
+import type { Cell, CellCoordinates } from "./types";
 
-import { match, P } from "ts-pattern";
-import { createMemo, onCleanup, onMount } from "solid-js";
+import { match } from "ts-pattern";
+import { createEffect, createMemo, onCleanup, onMount } from "solid-js";
 import { useSelector } from "@xstate/store/solid";
 import {
   coveredPattern,
   flaggedPattern,
   revealedBombPattern,
   revealedCellPattern,
-  createMinesweeperStore,
-} from "./store";
+} from "./types";
+
+import { createMinesweeperStore } from "./store";
+
 import {
   selectAdjacentMines,
   selectFlagged,
@@ -31,24 +33,30 @@ const CoveredCell: CellComponent = ({ row, col, store }) => {
 
   const uncoverCell = () => {
     if (gameStatus() === "idle") {
-      store.send({ type: "startGame", row, col });
-    } else if (gameStatus() === "playing") {
-      store.send({ type: "revealCell", row, col });
+      store.send({ type: "setGameStatus", gameStatus: "playing" });
     }
+
+    store.send({ type: "revealCell", row, col });
   };
 
-  const handleContextMenu = (e: MouseEvent) => {
+  const toggleFlag = (e: MouseEvent) => {
     e.preventDefault();
 
-    if (gameStatus() === "playing") {
-      store.send({ type: "flagCell", row, col });
+    if (gameStatus() !== "playing" && gameStatus() !== "idle") {
+      return;
     }
+
+    if (gameStatus() === "idle") {
+      store.send({ type: "startGame" });
+    }
+
+    store.send({ type: "toggleFlag", row, col });
   };
 
   return (
     <button
       onClick={uncoverCell}
-      onContextMenu={handleContextMenu}
+      onContextMenu={toggleFlag}
       class={`${baseCellStyle} bg-slate-900 hover:bg-slate-700 focus:ring-slate-400 dark:bg-slate-700 dark:hover:bg-slate-600`}
     ></button>
   );
@@ -67,15 +75,14 @@ const RevealedCell: CellComponent = ({ row, col, store }) => {
 };
 
 const FlaggedCell: CellComponent = ({ row, col, store }) => {
-  const handleContextMenu = (e: MouseEvent) => {
+  const toggleFlag = (e: MouseEvent) => {
     e.preventDefault();
-
-    store.send({ type: "flagCell", row, col });
+    store.send({ type: "toggleFlag", row, col });
   };
 
   return (
     <button
-      onContextMenu={handleContextMenu}
+      onContextMenu={toggleFlag}
       class={`${baseCellStyle} bg-slate-900 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600`}
     >
       🚩
@@ -182,6 +189,23 @@ export const Minesweeper: Component = () => {
   // Sending this event outside of onMount would work fine for a client-only app
   onMount(() => {
     store.send({ type: "initialize" });
+  });
+
+  createEffect(() => {
+    const subscription = store.subscribe((snapshot) => {
+      match(snapshot)
+        .with({ context: { gameStatus: "playing" } }, () => {
+          // start timer
+        })
+        .with({ context: { gameStatus: "lost" } }, () => {
+          // you lose
+        })
+        .otherwise(() => {});
+    });
+
+    onCleanup(() => {
+      subscription.unsubscribe();
+    });
   });
 
   return (

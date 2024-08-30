@@ -1,76 +1,13 @@
 import { createStore, SnapshotFromStore } from "@xstate/store";
 import { match, P } from "ts-pattern";
-
-type Configuration = {
-  width: number;
-  height: number;
-  mines: number;
-};
-
-export type CellCoordinates = { row: number; col: number };
-
-type GameGrid = Cell[][];
-
-export type GameState = {
-  config: Configuration;
-  grid: GameGrid;
-  gameStatus: "idle" | "playing" | "won" | "lost";
-  face: "grimace" | "smile" | "win" | "lose";
-  minesLeft: number;
-  flagsLeft: number;
-  time: number;
-};
-
-type GameEvents = {
-  initialize: object;
-  startGame: CellCoordinates;
-  revealCell: CellCoordinates;
-  flagCell: CellCoordinates;
-  tick: object;
-};
-
-export const emptyPattern = {
-  flagged: false,
-  revealed: false,
-  mine: false,
-  adjacentMines: 0,
-} as const;
-
-export const coveredPattern = {
-  ...emptyPattern,
-  mine: P.boolean,
-  adjacentMines: P.number,
-} as const;
-
-export const flaggedPattern = {
-  ...coveredPattern,
-  flagged: true,
-} as const;
-
-export const revealedBombPattern = {
-  ...coveredPattern,
-  revealed: true,
-  mine: true,
-} as const;
-
-export const revealedCellPattern = {
-  ...coveredPattern,
-  revealed: true,
-  mine: false,
-} as const;
-
-type EmptyCell = P.infer<typeof emptyPattern>;
-type CoveredCell = P.infer<typeof coveredPattern>;
-type FlaggedCell = P.infer<typeof flaggedPattern>;
-type RevealedCell = P.infer<typeof revealedCellPattern>;
-type RevealedBomb = P.infer<typeof revealedBombPattern>;
-
-export type Cell =
-  | EmptyCell
-  | CoveredCell
-  | FlaggedCell
-  | RevealedCell
-  | RevealedBomb;
+import {
+  Configuration,
+  EmptyCell,
+  GameEventMap,
+  GameGrid,
+  GameState,
+  GameStore,
+} from "./types";
 
 const createEmptyCell = (): EmptyCell => ({
   mine: false,
@@ -130,23 +67,35 @@ const getValidNeighbors = (config: Configuration, row: number, col: number) =>
 
 const randomIndex = (length: number) => Math.floor(Math.random() * length);
 
-const revealCell = (state: GameState, row: number, col: number): GameGrid => {
+const revealCell = (
+  state: GameState,
+  row: number,
+  col: number,
+  force: boolean = false
+): GameGrid => {
   const newGrid = state.grid.map((r) => [...r]);
   const cell = newGrid[row][col];
 
-  if (cell.revealed || cell.flagged) return newGrid;
-
   cell.revealed = true;
+
+  // if (!cell.adjacentMines && !cell.mine) {
+  //   revealNeighbors(state, row, col);
+  // }
 
   return newGrid;
 };
 
-const revealNeighbors = (state: GameState, row: number, col: number) => {
+const revealNeighbors = (
+  state: GameState,
+  row: number,
+  col: number,
+  force: boolean = false
+) => {
   const cell = state.grid[row][col];
 
-  if (cell.adjacentMines === 0 && !cell.mine) {
+  if ((cell.adjacentMines === 0 && !cell.mine) || force) {
     getValidNeighbors(state.config, row, col).forEach(([r, c]) =>
-      revealCell(state, r, c)
+      revealCell(state, r, c, force)
     );
   }
 };
@@ -154,13 +103,10 @@ const revealNeighbors = (state: GameState, row: number, col: number) => {
 const checkWin = (grid: GameGrid): boolean =>
   grid.every((row) => row.every((cell) => cell.mine || cell.revealed));
 
-export type GameStore = ReturnType<typeof createStore<GameState, GameEvents>>;
-export type GameSnapshot = SnapshotFromStore<GameStore>;
-
-export const createMinesweeperStore = (config: Configuration) => {
+export const createMinesweeperStore = (config: Configuration): GameStore => {
   const initialGrid = createGrid(config);
 
-  return createStore<GameState, GameEvents>(
+  return createStore<GameState, GameEventMap>(
     {
       config,
       grid: initialGrid,
@@ -171,40 +117,21 @@ export const createMinesweeperStore = (config: Configuration) => {
       time: 0,
     },
     {
-      initialize: (state) => ({
-        ...state,
-        grid: createGrid(state.config),
-      }),
-      startGame: (state, { row, col }) => ({
-        ...state,
-        grid: revealCell(state, row, col),
-        gameStatus: "playing",
-        time: 0,
-      }),
-      revealCell: (state, { row, col }) => {
-        if (state.gameStatus !== "playing") return state;
-
-        const newGrid = revealCell(state, row, col);
-        const clickedCell = newGrid[row][col];
-
-        if (clickedCell.mine)
-          return { ...state, grid: newGrid, gameStatus: "lost" };
-
-        const hasWon = checkWin(newGrid);
-        return {
-          ...state,
-          grid: newGrid,
-          gameStatus: hasWon ? "won" : "playing",
-        };
+      initialize: {
+        grid: ({ config }) => createGrid(config),
       },
-      flagCell: (state, { row, col }) => {
-        if (state.gameStatus !== "playing") return state;
-
+      startGame: {
+        gameStatus: "playing",
+      },
+      setGameStatus: {
+        gameStatus: (_, e) => e.gameStatus,
+      },
+      revealCell: {
+        grid: (ctx, { row, col }) => revealCell(ctx, row, col),
+      },
+      toggleFlag: (state, { row, col }) => {
         const newGrid = state.grid.map((r) => [...r]);
         const cell = newGrid[row][col];
-
-        if (cell.revealed) return state;
-
         const flagDelta = cell.flagged ? 1 : -1;
 
         if (!cell.flagged && !state.flagsLeft) {
