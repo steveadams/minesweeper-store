@@ -2,7 +2,7 @@ import type { Component } from "solid-js";
 import type { Cell, CellCoordinates } from "./store";
 
 import { match, P } from "ts-pattern";
-import { createMemo, onCleanup } from "solid-js";
+import { createMemo, onCleanup, onMount } from "solid-js";
 import { useSelector } from "@xstate/store/solid";
 import {
   coveredPattern,
@@ -178,7 +178,11 @@ export const Minesweeper: Component = () => {
     mines: 10,
   });
 
-  store.send({ type: "initialize" });
+  // Only necessary to avoid running on the server
+  // Sending this event outside of onMount would work fine for a client-only app
+  onMount(() => {
+    store.send({ type: "initialize" });
+  });
 
   return (
     <div>
