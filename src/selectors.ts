@@ -1,28 +1,26 @@
-// import { CellCoordinates, GameSnapshot, GameState } from "./store";
+import { CellCoordinates, GameSnapshot, GameState } from "./store";
 
-type Cell = { id: number; colour: string };
-type CellCoordinates = { row: number; col: number };
+export const selectGameStatus = (s: GameSnapshot) => s.context.gameStatus;
 
-type GameState = {
-  grid: Cell[][];
-  gameStatus: "idle" | "playing" | "won" | "lost";
-  time: number;
-};
+export const selectCell = (s: GameSnapshot, { row, col }: CellCoordinates) =>
+  s.context.grid[row][col];
 
-type GameSnapshot = {
-  context: GameState;
-};
-
-// A selector type that takes a store and returns some type T
-type Selector<T = unknown> = (store: GameSnapshot) => T;
-type SelectorWrapper<T> = T extends (...args: infer A) => Selector<any>
-  ? (...args: A) => Selector<any>
-  : never;
-
-export const selectGameStatus: Selector<GameState["gameStatus"]> = (s) =>
-  s.context.gameStatus;
-
-export const selectCell: SelectorWrapper<Cell> =
+export const selectAdjacentMines =
   ({ row, col }: CellCoordinates) =>
-  (s: GameSnapshot): Cell =>
-    s.context.grid[row][col];
+  (s: GameSnapshot) =>
+    s.context.grid[row][col].adjacentMines;
+
+export const selectRevealed =
+  ({ row, col }: CellCoordinates) =>
+  (s: GameSnapshot) =>
+    s.context.grid[row][col].revealed;
+
+export const selectFlagged =
+  ({ row, col }: CellCoordinates) =>
+  (s: GameSnapshot) =>
+    s.context.grid[row][col].flagged;
+
+export const selectMine =
+  ({ row, col }: CellCoordinates) =>
+  (s: GameSnapshot) =>
+    s.context.grid[row][col].mine;

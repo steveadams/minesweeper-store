@@ -9,19 +9,27 @@ import {
   flaggedPattern,
   revealedBombPattern,
   revealedCellPattern,
-  store,
+  createMinesweeperStore,
 } from "./store";
-import { selectAdjacentMines } from "./selectors";
+import {
+  selectAdjacentMines,
+  selectFlagged,
+  selectGameStatus,
+  selectMine,
+  selectRevealed,
+} from "./selectors";
 
 const baseCellStyle =
   "aspect-square size-10 rounded-sm text-white focus:outline-none focus:ring-2 focus:ring-offset-2 rounded-sm flex items-center justify-center pointer-events-auto";
 
-type CellComponent = Component<CellCoordinates>;
+type CellComponent = Component<
+  CellCoordinates & { store: ReturnType<typeof createMinesweeperStore> }
+>;
 
-const CoveredCell: CellComponent = ({ row, col }) => {
-  const gameStatus = useSelector(store, (state) => state.context.gameStatus);
+const CoveredCell: CellComponent = ({ row, col, store }) => {
+  const gameStatus = useSelector(store, selectGameStatus);
 
-  const handleClick = () => {
+  const uncoverCell = () => {
     if (gameStatus() === "idle") {
       store.send({ type: "startGame", row, col });
     } else if (gameStatus() === "playing") {
@@ -39,15 +47,15 @@ const CoveredCell: CellComponent = ({ row, col }) => {
 
   return (
     <button
-      onClick={handleClick}
+      onClick={uncoverCell}
       onContextMenu={handleContextMenu}
       class={`${baseCellStyle} bg-slate-900 hover:bg-slate-700 focus:ring-slate-400 dark:bg-slate-700 dark:hover:bg-slate-600`}
     ></button>
   );
 };
 
-const RevealedCell: CellComponent = ({ row, col }) => {
-  const adjacentMines = useSelector(store, selectAdjacentMines(row, col));
+const RevealedCell: CellComponent = ({ row, col, store }) => {
+  const adjacentMines = useSelector(store, selectAdjacentMines({ row, col }));
 
   return (
     <button
@@ -58,7 +66,7 @@ const RevealedCell: CellComponent = ({ row, col }) => {
   );
 };
 
-const FlaggedCell: CellComponent = ({ row, col }) => {
+const FlaggedCell: CellComponent = ({ row, col, store }) => {
   const handleContextMenu = (e: MouseEvent) => {
     e.preventDefault();
 
@@ -83,23 +91,11 @@ const RevealedBomb: Component = () => (
   </button>
 );
 
-const Cell: CellComponent = ({ row, col }) => {
-  const isRevealed = useSelector(
-    store,
-    (state) => state.context.grid[row][col].revealed
-  );
-  const isFlagged = useSelector(
-    store,
-    (state) => state.context.grid[row][col].flagged
-  );
-  const isMine = useSelector(
-    store,
-    (state) => state.context.grid[row][col].mine
-  );
-  const adjacentMines = useSelector(
-    store,
-    (state) => state.context.grid[row][col].adjacentMines
-  );
+const Cell: CellComponent = ({ row, col, store }) => {
+  const isRevealed = useSelector(store, selectRevealed({ row, col }));
+  const isFlagged = useSelector(store, selectFlagged({ row, col }));
+  const isMine = useSelector(store, selectMine({ row, col }));
+  const adjacentMines = useSelector(store, selectAdjacentMines({ row, col }));
 
   const cell = {
     revealed: isRevealed(),
@@ -109,14 +105,22 @@ const Cell: CellComponent = ({ row, col }) => {
   } as Cell;
 
   return match(cell)
-    .with(coveredPattern, () => <CoveredCell row={row} col={col} />)
-    .with(flaggedPattern, () => <FlaggedCell row={row} col={col} />)
-    .with(revealedCellPattern, () => <RevealedCell row={row} col={col} />)
+    .with(coveredPattern, () => (
+      <CoveredCell row={row} col={col} store={store} />
+    ))
+    .with(flaggedPattern, () => (
+      <FlaggedCell row={row} col={col} store={store} />
+    ))
+    .with(revealedCellPattern, () => (
+      <RevealedCell row={row} col={col} store={store} />
+    ))
     .with(revealedBombPattern, () => <RevealedBomb />)
     .exhaustive();
 };
 
-const Board: Component = () => {
+const Board: Component<{
+  store: ReturnType<typeof createMinesweeperStore>;
+}> = ({ store }) => {
   const board = useSelector(store, (state) => state.context.grid);
 
   return (
@@ -124,7 +128,7 @@ const Board: Component = () => {
       {board().map((row, rowIndex) => (
         <div class="flex gap-1">
           {row.map((_, colIndex) => (
-            <Cell row={rowIndex} col={colIndex} />
+            <Cell row={rowIndex} col={colIndex} store={store} />
           ))}
         </div>
       ))}
@@ -132,8 +136,11 @@ const Board: Component = () => {
   );
 };
 
-const GameInfo: Component = () => {
+const GameInfo: Component<{
+  store: ReturnType<typeof createMinesweeperStore>;
+}> = ({ store }) => {
   const gameStatus = useSelector(store, (state) => state.context.gameStatus);
+  const face = useSelector(store, (state) => state.context.face);
   const flagsLeft = useSelector(store, (state) => state.context.minesLeft);
   const time = useSelector(store, (state) => state.context.time);
 
@@ -155,20 +162,29 @@ const GameInfo: Component = () => {
   });
 
   return (
-    <div class="flex flex-col">
+    <div class="flex justify-between">
       <div>🚩 {flagsLeft()}</div>
-      <div>Time: {time()}</div>
       <div>Status: {gameStatus()}</div>
+      <div>{face()}</div>
+      <div>Time: {time()}</div>
     </div>
   );
 };
 
 export const Minesweeper: Component = () => {
+  const store = createMinesweeperStore({
+    width: 10,
+    height: 10,
+    mines: 10,
+  });
+
+  store.send({ type: "initialize" });
+
   return (
     <div>
       <h1>Minesweeper</h1>
-      <GameInfo />
-      <Board />
+      <GameInfo store={store} />
+      <Board store={store} />
     </div>
   );
 };
