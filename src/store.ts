@@ -1,13 +1,17 @@
-import { createStore, SnapshotFromStore } from "@xstate/store";
-import { match, P } from "ts-pattern";
+import { createStore } from "@xstate/store";
 import {
-  Configuration,
-  EmptyCell,
-  GameEventMap,
-  GameGrid,
-  GameState,
-  GameStore,
+  coveredCellWithMine,
+  type CellCoordinates,
+  type Configuration,
+  type EmptyCell,
+  type GameEventMap,
+  type GameGrid,
+  type GameState,
+  type GameStore,
+  type RevealedClearCell,
 } from "./types";
+import { match, P } from "ts-pattern";
+import { guard } from "./guard";
 
 const createEmptyCell = (): EmptyCell => ({
   mine: false,
@@ -36,8 +40,8 @@ const createGrid = (config: Configuration): GameGrid => {
   // Update each cell with its adjacent mine count
   grid.forEach((row, rowIndex) =>
     row.forEach((cell, colIndex) => {
-      const adjacentMines = getValidNeighbors(
-        config,
+      const adjacentMines = getValidNeighbourCoordinates(
+        grid,
         rowIndex,
         colIndex
       ).reduce((count, [r, c]) => count + (grid[r][c].mine ? 1 : 0), 0);
@@ -49,7 +53,11 @@ const createGrid = (config: Configuration): GameGrid => {
   return grid;
 };
 
-const getValidNeighbors = (config: Configuration, row: number, col: number) =>
+const getValidNeighbourCoordinates = (
+  grid: GameState["grid"],
+  row: number,
+  col: number
+) =>
   [
     [-1, -1],
     [-1, 0],
@@ -60,48 +68,51 @@ const getValidNeighbors = (config: Configuration, row: number, col: number) =>
     [1, 0],
     [1, 1],
   ]
-    .map(([dr, dc]) => [row + dr, col + dc])
-    .filter(
-      ([r, c]) => r >= 0 && r < config.height && c >= 0 && c < config.width
-    );
+    .map(([x, y]) => [row + x, col + y])
+    .filter(([x, y]) => grid[x] !== undefined && grid[x][y] !== undefined);
 
 const randomIndex = (length: number) => Math.floor(Math.random() * length);
 
-const revealCell = (
-  state: GameState,
-  row: number,
-  col: number,
-  force: boolean = false
-): GameGrid => {
-  const newGrid = state.grid.map((r) => [...r]);
-  const cell = newGrid[row][col];
+const doReveal = (grid: GameGrid, { row, col }: CellCoordinates) => {
+  const newGrid = [...grid];
 
-  cell.revealed = true;
-
-  // if (!cell.adjacentMines && !cell.mine) {
-  //   revealNeighbors(state, row, col);
-  // }
+  revealCell(newGrid, { row, col });
 
   return newGrid;
 };
 
-const revealNeighbors = (
-  state: GameState,
-  row: number,
-  col: number,
-  force: boolean = false
-) => {
-  const cell = state.grid[row][col];
+const revealCell = (
+  grid: GameState["grid"],
+  { row, col }: CellCoordinates
+): GameGrid => {
+  const cell = grid[row][col];
 
-  if ((cell.adjacentMines === 0 && !cell.mine) || force) {
-    getValidNeighbors(state.config, row, col).forEach(([r, c]) =>
-      revealCell(state, r, c, force)
-    );
+  cell.revealed = true;
+
+  if (cell.adjacentMines === 0 && !cell.mine) {
+    getValidNeighbourCoordinates(grid, row, col).forEach(([x, y]) => {
+      if (grid[x][y].revealed) {
+        return grid;
+      }
+
+      return revealCell(grid, { row: x, col: y });
+    });
   }
+
+  return grid;
 };
 
-const checkWin = (grid: GameGrid): boolean =>
-  grid.every((row) => row.every((cell) => cell.mine || cell.revealed));
+const revealMines = (grid: GameGrid): GameGrid =>
+  grid.map((row) =>
+    row.map((cell) =>
+      match(cell)
+        .with(
+          coveredCellWithMine,
+          () => ({ ...cell, revealed: true } as RevealedClearCell)
+        )
+        .otherwise((c) => c)
+    )
+  );
 
 export const createMinesweeperStore = (config: Configuration): GameStore => {
   const initialGrid = createGrid(config);
@@ -111,43 +122,51 @@ export const createMinesweeperStore = (config: Configuration): GameStore => {
       config,
       grid: initialGrid,
       gameStatus: "idle",
-      face: "smile",
       minesLeft: config.mines,
       flagsLeft: config.mines,
+      interacting: false,
       time: 0,
     },
     {
       initialize: {
         grid: ({ config }) => createGrid(config),
+        gameStatus: "idle",
       },
-      startGame: {
-        gameStatus: "playing",
+      startGame: { gameStatus: "playing" },
+      endGame: {
+        gameStatus: "lost",
+        grid: (ctx) => revealMines(ctx.grid),
       },
-      setGameStatus: {
-        gameStatus: (_, e) => e.gameStatus,
-      },
-      revealCell: {
-        grid: (ctx, { row, col }) => revealCell(ctx, row, col),
-      },
-      toggleFlag: (state, { row, col }) => {
-        const newGrid = state.grid.map((r) => [...r]);
-        const cell = newGrid[row][col];
-        const flagDelta = cell.flagged ? 1 : -1;
+      winGame: { gameStatus: "won" },
+      revealCell: guard(
+        ({ gameStatus }) => gameStatus === "playing",
+        ({ grid }, event) => ({
+          grid: doReveal(grid, event),
+        })
+      ),
+      toggleFlag: guard(
+        ({ gameStatus }) => gameStatus === "playing",
+        (state, { row, col }) => {
+          const newGrid = state.grid.map((r) => [...r]);
+          const cell = newGrid[row][col];
+          const flagDelta = cell.flagged ? 1 : -1;
 
-        if (!cell.flagged && !state.flagsLeft) {
-          return state;
+          if (!cell.flagged && !state.flagsLeft) {
+            return state;
+          }
+
+          cell.flagged = !cell.flagged;
+
+          return {
+            flagsLeft: state.flagsLeft + flagDelta,
+            minesLeft: state.minesLeft + flagDelta,
+            grid: newGrid,
+          };
         }
-
-        cell.flagged = !cell.flagged;
-
-        return {
-          ...state,
-          flagsLeft: state.flagsLeft + flagDelta,
-          minesLeft: state.minesLeft + flagDelta,
-          grid: newGrid,
-        };
-      },
-      tick: (state) => ({ ...state, time: state.time + 1 }),
+      ),
+      startInteract: () => ({ interacting: true }),
+      endInteract: () => ({ interacting: false }),
+      tick: (state) => ({ time: state.time + 1 }),
     }
   );
 };

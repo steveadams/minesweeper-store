@@ -5,18 +5,21 @@ import { match } from "ts-pattern";
 import { createEffect, createMemo, onCleanup, onMount } from "solid-js";
 import { useSelector } from "@xstate/store/solid";
 import {
-  coveredPattern,
-  flaggedPattern,
-  revealedBombPattern,
-  revealedCellPattern,
+  coveredCell,
+  flaggedCell,
+  revealedCellWithMine,
+  revealedClearCell,
 } from "./types";
 
 import { createMinesweeperStore } from "./store";
 
 import {
   selectAdjacentMines,
+  selectCell,
+  selectFace,
   selectFlagged,
   selectGameStatus,
+  selectInteracting,
   selectMine,
   selectRevealed,
 } from "./selectors";
@@ -30,13 +33,19 @@ type CellComponent = Component<
 
 const CoveredCell: CellComponent = ({ row, col, store }) => {
   const gameStatus = useSelector(store, selectGameStatus);
+  const cell = useSelector(store, selectCell({ row, col }));
+  const interacting = useSelector(store, selectInteracting);
 
   const uncoverCell = () => {
     if (gameStatus() === "idle") {
-      store.send({ type: "setGameStatus", gameStatus: "playing" });
+      store.send({ type: "startGame" });
     }
 
     store.send({ type: "revealCell", row, col });
+
+    if (cell().mine) {
+      store.send({ type: "endGame" });
+    }
   };
 
   const toggleFlag = (e: MouseEvent) => {
@@ -58,6 +67,11 @@ const CoveredCell: CellComponent = ({ row, col, store }) => {
       onClick={uncoverCell}
       onContextMenu={toggleFlag}
       class={`${baseCellStyle} bg-slate-900 hover:bg-slate-700 focus:ring-slate-400 dark:bg-slate-700 dark:hover:bg-slate-600`}
+      onMouseLeave={() =>
+        interacting ? store.send({ type: "endInteract" }) : null
+      }
+      onMouseDown={() => store.send({ type: "startInteract" })}
+      onMouseUp={() => store.send({ type: "endInteract" })}
     ></button>
   );
 };
@@ -112,16 +126,12 @@ const Cell: CellComponent = ({ row, col, store }) => {
   } as Cell;
 
   return match(cell)
-    .with(coveredPattern, () => (
-      <CoveredCell row={row} col={col} store={store} />
-    ))
-    .with(flaggedPattern, () => (
-      <FlaggedCell row={row} col={col} store={store} />
-    ))
-    .with(revealedCellPattern, () => (
+    .with(coveredCell, () => <CoveredCell row={row} col={col} store={store} />)
+    .with(flaggedCell, () => <FlaggedCell row={row} col={col} store={store} />)
+    .with(revealedClearCell, () => (
       <RevealedCell row={row} col={col} store={store} />
     ))
-    .with(revealedBombPattern, () => <RevealedBomb />)
+    .with(revealedCellWithMine, () => <RevealedBomb />)
     .exhaustive();
 };
 
@@ -146,9 +156,9 @@ const Board: Component<{
 const GameInfo: Component<{
   store: ReturnType<typeof createMinesweeperStore>;
 }> = ({ store }) => {
-  const gameStatus = useSelector(store, (state) => state.context.gameStatus);
-  const face = useSelector(store, (state) => state.context.face);
-  const flagsLeft = useSelector(store, (state) => state.context.minesLeft);
+  const gameStatus = useSelector(store, selectGameStatus);
+  const face = useSelector(store, selectFace);
+  const flagsLeft = useSelector(store, (state) => state.context.flagsLeft);
   const time = useSelector(store, (state) => state.context.time);
 
   let interval: number | undefined;
@@ -172,7 +182,11 @@ const GameInfo: Component<{
     <div class="flex justify-between">
       <div>🚩 {flagsLeft()}</div>
       <div>Status: {gameStatus()}</div>
-      <div>{face()}</div>
+      <div>
+        <button onClick={() => store.send({ type: "initialize" })}>
+          {face()}
+        </button>
+      </div>
       <div>Time: {time()}</div>
     </div>
   );
@@ -191,16 +205,10 @@ export const Minesweeper: Component = () => {
     store.send({ type: "initialize" });
   });
 
+  // Could react to state here, but... Might be too implicit
   createEffect(() => {
     const subscription = store.subscribe((snapshot) => {
-      match(snapshot)
-        .with({ context: { gameStatus: "playing" } }, () => {
-          // start timer
-        })
-        .with({ context: { gameStatus: "lost" } }, () => {
-          // you lose
-        })
-        .otherwise(() => {});
+      // ...
     });
 
     onCleanup(() => {
