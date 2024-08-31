@@ -2,7 +2,7 @@ import type { Component } from "solid-js";
 import type { Cell, CellCoordinates } from "./types";
 
 import { match } from "ts-pattern";
-import { createEffect, createMemo, onCleanup, onMount } from "solid-js";
+import { createMemo, onCleanup, onMount } from "solid-js";
 import { useSelector } from "@xstate/store/solid";
 import {
   coveredCell,
@@ -14,14 +14,13 @@ import {
 import { createMinesweeperStore } from "./store";
 
 import {
-  selectAdjacentMines,
-  selectCell,
+  selectCellAdjacentMines,
   selectFace,
-  selectFlagged,
+  selectIsCellFlagged,
   selectGameStatus,
-  selectInteracting,
-  selectMine,
-  selectRevealed,
+  selectIsPlayerRevealing,
+  selectIsCellMine,
+  selectIsCellRevealed,
 } from "./selectors";
 
 const baseCellStyle =
@@ -32,33 +31,14 @@ type CellComponent = Component<
 >;
 
 const CoveredCell: CellComponent = ({ row, col, store }) => {
-  const gameStatus = useSelector(store, selectGameStatus);
-  const cell = useSelector(store, selectCell({ row, col }));
-  const interacting = useSelector(store, selectInteracting);
+  const revealing = useSelector(store, selectIsPlayerRevealing);
 
   const uncoverCell = () => {
-    if (gameStatus() === "idle") {
-      store.send({ type: "startGame" });
-    }
-
     store.send({ type: "revealCell", row, col });
-
-    if (cell().mine) {
-      store.send({ type: "endGame" });
-    }
   };
 
   const toggleFlag = (e: MouseEvent) => {
     e.preventDefault();
-
-    if (gameStatus() !== "playing" && gameStatus() !== "idle") {
-      return;
-    }
-
-    if (gameStatus() === "idle") {
-      store.send({ type: "startGame" });
-    }
-
     store.send({ type: "toggleFlag", row, col });
   };
 
@@ -68,16 +48,21 @@ const CoveredCell: CellComponent = ({ row, col, store }) => {
       onContextMenu={toggleFlag}
       class={`${baseCellStyle} bg-slate-900 hover:bg-slate-700 focus:ring-slate-400 dark:bg-slate-700 dark:hover:bg-slate-600`}
       onMouseLeave={() =>
-        interacting ? store.send({ type: "endInteract" }) : null
+        revealing
+          ? store.send({ type: "setIsPlayerRevealing", to: false })
+          : null
       }
-      onMouseDown={() => store.send({ type: "startInteract" })}
-      onMouseUp={() => store.send({ type: "endInteract" })}
+      onMouseDown={() => store.send({ type: "setIsPlayerRevealing", to: true })}
+      onMouseUp={() => store.send({ type: "setIsPlayerRevealing", to: false })}
     ></button>
   );
 };
 
 const RevealedCell: CellComponent = ({ row, col, store }) => {
-  const adjacentMines = useSelector(store, selectAdjacentMines({ row, col }));
+  const adjacentMines = useSelector(
+    store,
+    selectCellAdjacentMines({ row, col })
+  );
 
   return (
     <button
@@ -113,10 +98,13 @@ const RevealedBomb: Component = () => (
 );
 
 const Cell: CellComponent = ({ row, col, store }) => {
-  const isRevealed = useSelector(store, selectRevealed({ row, col }));
-  const isFlagged = useSelector(store, selectFlagged({ row, col }));
-  const isMine = useSelector(store, selectMine({ row, col }));
-  const adjacentMines = useSelector(store, selectAdjacentMines({ row, col }));
+  const isRevealed = useSelector(store, selectIsCellRevealed({ row, col }));
+  const isFlagged = useSelector(store, selectIsCellFlagged({ row, col }));
+  const isMine = useSelector(store, selectIsCellMine({ row, col }));
+  const adjacentMines = useSelector(
+    store,
+    selectCellAdjacentMines({ row, col })
+  );
 
   const cell = {
     revealed: isRevealed(),
@@ -156,12 +144,36 @@ const Board: Component<{
 const GameInfo: Component<{
   store: ReturnType<typeof createMinesweeperStore>;
 }> = ({ store }) => {
-  const gameStatus = useSelector(store, selectGameStatus);
   const face = useSelector(store, selectFace);
   const flagsLeft = useSelector(store, (state) => state.context.flagsLeft);
-  const time = useSelector(store, (state) => state.context.time);
+  const time = useSelector(store, (state) => state.context.timeElapsed);
+
+  return (
+    <div class="flex justify-between">
+      <div class="font-mono">🚩 {flagsLeft()}</div>
+      <div>
+        <button onClick={() => store.send({ type: "initialize" })}>
+          {face()}
+        </button>
+      </div>
+      <div class="font-mono">{time()}</div>
+    </div>
+  );
+};
+
+export const Minesweeper: Component = () => {
+  const store = createMinesweeperStore({
+    width: 10,
+    height: 10,
+    mines: 10,
+  });
+
+  onMount(() => {
+    store.send({ type: "initialize" });
+  });
 
   let interval: number | undefined;
+  const gameStatus = useSelector(store, selectGameStatus);
 
   createMemo(() => {
     if (gameStatus() === "playing") {
@@ -176,44 +188,6 @@ const GameInfo: Component<{
 
   onCleanup(() => {
     if (interval) clearInterval(interval);
-  });
-
-  return (
-    <div class="flex justify-between">
-      <div>🚩 {flagsLeft()}</div>
-      <div>Status: {gameStatus()}</div>
-      <div>
-        <button onClick={() => store.send({ type: "initialize" })}>
-          {face()}
-        </button>
-      </div>
-      <div>Time: {time()}</div>
-    </div>
-  );
-};
-
-export const Minesweeper: Component = () => {
-  const store = createMinesweeperStore({
-    width: 10,
-    height: 10,
-    mines: 10,
-  });
-
-  // Only necessary to avoid running on the server
-  // Sending this event outside of onMount would work fine for a client-only app
-  onMount(() => {
-    store.send({ type: "initialize" });
-  });
-
-  // Could react to state here, but... Might be too implicit
-  createEffect(() => {
-    const subscription = store.subscribe((snapshot) => {
-      // ...
-    });
-
-    onCleanup(() => {
-      subscription.unsubscribe();
-    });
   });
 
   return (

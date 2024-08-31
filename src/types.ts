@@ -66,11 +66,12 @@ const configuration = P.shape({
 const gameState = P.shape({
   config: configuration,
   grid: gameGrid,
-  gameStatus: P.union("idle", "playing", "won", "lost"),
-  minesLeft: P.number,
+  gameStatus: P.union("ready", "playing", "game-over"),
+  mineWasRevealed: P.boolean,
+  cellsRevealed: P.number,
   flagsLeft: P.number,
-  interacting: P.boolean,
-  time: P.number,
+  playerIsRevealingCell: P.boolean,
+  timeElapsed: P.number,
 });
 
 export type EmptyCell = P.infer<typeof defaultCell>;
@@ -89,15 +90,12 @@ export type GameEventMap = {
   initialize: object;
   startGame: object;
   endGame: object;
-  winGame: object;
   revealCell: CellCoordinates;
   toggleFlag: CellCoordinates;
-  startInteract: object;
-  endInteract: object;
+  setIsPlayerRevealing: { to: boolean };
   tick: object;
 };
 
 export type GameEvent = ExtractEventsFromPayloadMap<GameEventMap>;
-
 export type GameStore = Store<GameState, GameEvent>;
 export type GameSnapshot = SnapshotFromStore<GameStore>;
