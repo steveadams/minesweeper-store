@@ -1,10 +1,10 @@
-import { match, P } from "ts-pattern";
-import { CellCoordinates, GameSnapshot, GameState } from "./types";
+import { match } from "ts-pattern";
+import { Cell, CellCoordinates, GameSnapshot, GameState } from "./types";
 
 export const selectGameStatus = (s: GameSnapshot) => s.context.gameStatus;
 
 const getCell = (s: GameSnapshot, { row, col }: CellCoordinates) =>
-  s.context.grid[row][col];
+  s.context.grid[row][col] as Cell;
 
 export const selectCell = (coords: CellCoordinates) => (s: GameSnapshot) =>
   getCell(s, coords);
@@ -28,19 +28,13 @@ export const selectIsCellMine =
 export const selectIsPlayerRevealing = (s: GameSnapshot) =>
   s.context.playerIsRevealingCell;
 
-export const selectFace = (s: GameSnapshot) => {
-  console.log(s.context.gameStatus, s.context.playerIsRevealingCell);
-  const face = match(s.context as GameState)
+export const selectFace = (s: GameSnapshot) =>
+  match(s.context as GameState)
     .with(
       { gameStatus: "playing", playerIsRevealingCell: true },
       { gameStatus: "ready", playerIsRevealingCell: true },
       () => "😬"
     )
-    .with({ gameStatus: "game-over", mineWasRevealed: false }, () => "😀")
-    .with({ gameStatus: "game-over", mineWasRevealed: true }, () => "😵")
+    .with({ gameStatus: "win" }, () => "😀")
+    .with({ gameStatus: "game-over" }, () => "😵")
     .otherwise(() => "🙂");
-
-  console.log(face);
-
-  return face;
-};

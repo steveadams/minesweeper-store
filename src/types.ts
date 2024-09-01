@@ -5,57 +5,58 @@ import type {
 } from "@xstate/store";
 import { P } from "ts-pattern";
 
-export const cell = P.shape({
-  flagged: P.boolean,
-  revealed: P.boolean,
+export const coveredCell = P.shape({
+  flagged: false,
+  revealed: false,
   mine: P.boolean,
   adjacentMines: P.number,
 });
 
-export const defaultCell = {
+export const coveredCellWithoutMine = P.shape({
   flagged: false,
   revealed: false,
   mine: false,
-  adjacentMines: 0,
-} as const;
+  adjacentMines: P.number,
+});
 
-export const coveredCell = {
-  ...defaultCell,
+export const coveredCellWithMine = P.shape({
+  flagged: false,
+  revealed: false,
+  mine: true,
+  adjacentMines: P.number,
+});
+
+export const flaggedCell = P.shape({
+  flagged: true,
+  revealed: false,
   mine: P.boolean,
   adjacentMines: P.number,
-} as const;
+});
 
-export const coveredCellWithMine = {
-  ...coveredCell,
-  mine: true,
-} as const;
-
-export const flaggedCell = {
-  ...coveredCell,
-  flagged: true,
-} as const;
-
-export const revealedCellWithMine = {
-  ...coveredCellWithMine,
+export const revealedCellWithMine = P.shape({
+  flagged: false,
   revealed: true,
-} as const;
+  mine: true,
+  adjacentMines: P.number,
+});
 
-export const revealedClearCell = {
-  ...coveredCell,
+export const revealedClearCell = P.shape({
+  flagged: false,
   revealed: true,
   mine: false,
-} as const;
+  adjacentMines: P.number,
+});
 
-const anyCell = P.union(
-  defaultCell,
+export const anyCell = P.union(
   coveredCell,
   coveredCellWithMine,
+  coveredCellWithoutMine,
   flaggedCell,
   revealedClearCell,
   revealedCellWithMine
 );
 
-const gameGrid = P.array(P.array(cell));
+const gameGrid = P.array(P.array(anyCell));
 const cellCoordinates = P.shape({ row: P.number, col: P.number });
 const configuration = P.shape({
   width: P.number,
@@ -66,15 +67,13 @@ const configuration = P.shape({
 const gameState = P.shape({
   config: configuration,
   grid: gameGrid,
-  gameStatus: P.union("ready", "playing", "game-over"),
-  mineWasRevealed: P.boolean,
+  gameStatus: P.union("ready", "playing", "win", "game-over"),
   cellsRevealed: P.number,
   flagsLeft: P.number,
   playerIsRevealingCell: P.boolean,
   timeElapsed: P.number,
 });
 
-export type EmptyCell = P.infer<typeof defaultCell>;
 export type CoveredCell = P.infer<typeof coveredCell>;
 export type FlaggedCell = P.infer<typeof flaggedCell>;
 export type RevealedClearCell = P.infer<typeof revealedClearCell>;
@@ -88,8 +87,9 @@ export type GameState = P.infer<typeof gameState>;
 
 export type GameEventMap = {
   initialize: object;
-  startGame: object;
-  endGame: object;
+  startPlaying: object;
+  win: object;
+  gameOver: object;
   revealCell: CellCoordinates;
   toggleFlag: CellCoordinates;
   setIsPlayerRevealing: { to: boolean };

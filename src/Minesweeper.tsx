@@ -1,11 +1,19 @@
-import type { Component } from "solid-js";
+import type { Accessor, Component } from "solid-js";
 import type { Cell, CellCoordinates } from "./types";
 
 import { match } from "ts-pattern";
-import { createMemo, onCleanup, onMount } from "solid-js";
+import {
+  createMemo,
+  createRenderEffect,
+  Index,
+  onCleanup,
+  onMount,
+} from "solid-js";
 import { useSelector } from "@xstate/store/solid";
 import {
   coveredCell,
+  coveredCellWithMine,
+  coveredCellWithoutMine,
   flaggedCell,
   revealedCellWithMine,
   revealedClearCell,
@@ -14,61 +22,74 @@ import {
 import { createMinesweeperStore } from "./store";
 
 import {
-  selectCellAdjacentMines,
+  // selectCellAdjacentMines,
   selectFace,
-  selectIsCellFlagged,
   selectGameStatus,
   selectIsPlayerRevealing,
-  selectIsCellMine,
-  selectIsCellRevealed,
+  // selectCell,
 } from "./selectors";
 
 const baseCellStyle =
   "aspect-square size-10 rounded-sm text-white focus:outline-none focus:ring-2 focus:ring-offset-2 rounded-sm flex items-center justify-center pointer-events-auto";
 
 type CellComponent = Component<
-  CellCoordinates & { store: ReturnType<typeof createMinesweeperStore> }
+  CellCoordinates & {
+    cell: Accessor<Cell>;
+    store: ReturnType<typeof createMinesweeperStore>;
+  }
 >;
 
 const CoveredCell: CellComponent = ({ row, col, store }) => {
   const revealing = useSelector(store, selectIsPlayerRevealing);
 
-  const uncoverCell = () => {
+  const uncoverCell = (e: MouseEvent) => {
+    e.preventDefault();
+
+    console.log("uncovering cell");
+
     store.send({ type: "revealCell", row, col });
   };
 
   const toggleFlag = (e: MouseEvent) => {
     e.preventDefault();
+
+    console.log("toggling flag");
+
     store.send({ type: "toggleFlag", row, col });
+  };
+
+  const setRevealing = (e: MouseEvent) => {
+    e.preventDefault();
+
+    if (e.button !== 0) {
+      return;
+    }
+
+    store.send({ type: "setIsPlayerRevealing", to: true });
   };
 
   return (
     <button
+      class={`${baseCellStyle} bg-slate-900 hover:bg-slate-700 focus:ring-slate-400 dark:bg-slate-700 dark:hover:bg-slate-600`}
       onClick={uncoverCell}
       onContextMenu={toggleFlag}
-      class={`${baseCellStyle} bg-slate-900 hover:bg-slate-700 focus:ring-slate-400 dark:bg-slate-700 dark:hover:bg-slate-600`}
       onMouseLeave={() =>
         revealing
           ? store.send({ type: "setIsPlayerRevealing", to: false })
           : null
       }
-      onMouseDown={() => store.send({ type: "setIsPlayerRevealing", to: true })}
+      onMouseDown={setRevealing}
       onMouseUp={() => store.send({ type: "setIsPlayerRevealing", to: false })}
     ></button>
   );
 };
 
-const RevealedCell: CellComponent = ({ row, col, store }) => {
-  const adjacentMines = useSelector(
-    store,
-    selectCellAdjacentMines({ row, col })
-  );
-
+const RevealedCell: CellComponent = ({ row, col, cell, store }) => {
   return (
     <button
       class={`${baseCellStyle} bg-slate-400 focus:ring-slate-500 dark:bg-slate-400`}
     >
-      {adjacentMines() > 0 ? adjacentMines().toString() : ""}
+      {cell().adjacentMines > 0 ? cell().adjacentMines.toString() : ""}
     </button>
   );
 };
@@ -97,27 +118,25 @@ const RevealedBomb: Component = () => (
   </button>
 );
 
-const Cell: CellComponent = ({ row, col, store }) => {
-  const isRevealed = useSelector(store, selectIsCellRevealed({ row, col }));
-  const isFlagged = useSelector(store, selectIsCellFlagged({ row, col }));
-  const isMine = useSelector(store, selectIsCellMine({ row, col }));
-  const adjacentMines = useSelector(
-    store,
-    selectCellAdjacentMines({ row, col })
-  );
+const Cell: CellComponent = ({ row, col, cell, store }) => {
+  // const cell = useSelector(
+  //   store,
+  //   selectCell({ row, col }),
+  // );
 
-  const cell = {
-    revealed: isRevealed(),
-    flagged: isFlagged(),
-    mine: isMine(),
-    adjacentMines: adjacentMines(),
-  } as Cell;
+  createRenderEffect(() => {
+    console.log("render Cell");
+  });
 
-  return match(cell)
-    .with(coveredCell, () => <CoveredCell row={row} col={col} store={store} />)
-    .with(flaggedCell, () => <FlaggedCell row={row} col={col} store={store} />)
+  return match(cell())
+    .with(coveredCell, coveredCellWithMine, coveredCellWithoutMine, () => (
+      <CoveredCell cell={cell} row={row} col={col} store={store} />
+    ))
+    .with(flaggedCell, () => (
+      <FlaggedCell cell={cell} row={row} col={col} store={store} />
+    ))
     .with(revealedClearCell, () => (
-      <RevealedCell row={row} col={col} store={store} />
+      <RevealedCell cell={cell} row={row} col={col} store={store} />
     ))
     .with(revealedCellWithMine, () => <RevealedBomb />)
     .exhaustive();
@@ -128,15 +147,30 @@ const Board: Component<{
 }> = ({ store }) => {
   const board = useSelector(store, (state) => state.context.grid);
 
+  createRenderEffect(() => {
+    console.log("render Board");
+  });
+
   return (
     <div class="flex gap-1 flex-col">
-      {board().map((row, rowIndex) => (
+      <Index each={board()}>
+        {(item, rowIndex) => (
+          <div class="flex gap-1">
+            <Index each={item()}>
+              {(cell, colIndex) => (
+                <Cell row={rowIndex} col={colIndex} cell={cell} store={store} />
+              )}
+            </Index>
+          </div>
+        )}
+      </Index>
+      {/* {board().map((row, rowIndex) => (
         <div class="flex gap-1">
           {row.map((_, colIndex) => (
             <Cell row={rowIndex} col={colIndex} store={store} />
           ))}
         </div>
-      ))}
+      ))} */}
     </div>
   );
 };
@@ -147,6 +181,10 @@ const GameInfo: Component<{
   const face = useSelector(store, selectFace);
   const flagsLeft = useSelector(store, (state) => state.context.flagsLeft);
   const time = useSelector(store, (state) => state.context.timeElapsed);
+
+  createRenderEffect(() => {
+    console.log("render GameInfo");
+  });
 
   return (
     <div class="flex justify-between">
@@ -168,12 +206,18 @@ export const Minesweeper: Component = () => {
     mines: 10,
   });
 
-  onMount(() => {
-    store.send({ type: "initialize" });
-  });
+  onMount(() => store.send({ type: "initialize" }));
 
   let interval: number | undefined;
   const gameStatus = useSelector(store, selectGameStatus);
+
+  // createEffect(() => {
+  //   const subscription = store.subscribe((state) => {
+  //     console.log(state);
+  //   });
+
+  //   return () => subscription.unsubscribe();
+  // });
 
   createMemo(() => {
     if (gameStatus() === "playing") {
@@ -188,6 +232,10 @@ export const Minesweeper: Component = () => {
 
   onCleanup(() => {
     if (interval) clearInterval(interval);
+  });
+
+  createRenderEffect(() => {
+    console.log("render MineSweeper");
   });
 
   return (

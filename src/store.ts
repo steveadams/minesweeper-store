@@ -1,9 +1,11 @@
 import { createStore } from "@xstate/store";
 import {
+  Cell,
+  CoveredCell,
   coveredCellWithMine,
+  coveredCellWithoutMine,
   type CellCoordinates,
   type Configuration,
-  type EmptyCell,
   type GameEventMap,
   type GameGrid,
   type GameState,
@@ -12,12 +14,13 @@ import {
 } from "./types";
 import { match } from "ts-pattern";
 
-const createEmptyCell = (): EmptyCell => ({
-  mine: false,
-  revealed: false,
-  flagged: false,
-  adjacentMines: 0,
-});
+const createEmptyCell = () =>
+  ({
+    mine: false,
+    revealed: false,
+    flagged: false,
+    adjacentMines: 0,
+  } as Cell);
 
 const randomIndex = (length: number) => Math.floor(Math.random() * length);
 
@@ -33,7 +36,7 @@ const createGrid = (config: Configuration): GameGrid => {
     const col = randomIndex(config.width);
 
     if (!grid[row][col].mine) {
-      grid[row][col] = { ...grid[row][col], mine: true };
+      grid[row][col] = { ...grid[row][col], mine: true } as Cell;
       minesPlaced++;
     }
   }
@@ -84,7 +87,7 @@ const doReveal = (grid: GameGrid, { row, col }: CellCoordinates) => {
 };
 
 const revealCell = (
-  grid: GameState["grid"],
+  grid: GameGrid,
   { row, col }: CellCoordinates
 ): GameGrid => {
   const cell = grid[row][col];
@@ -124,7 +127,6 @@ export const createMinesweeperStore = (config: Configuration): GameStore => {
       config,
       grid: initialGrid,
       gameStatus: "ready",
-      mineWasRevealed: false,
       cellsRevealed: 0,
       flagsLeft: config.mines,
       playerIsRevealingCell: false,
@@ -135,16 +137,33 @@ export const createMinesweeperStore = (config: Configuration): GameStore => {
         grid: ({ config }) => createGrid(config),
         gameStatus: "ready",
       },
-      startGame: { gameStatus: "playing" },
-      endGame: {
+      startPlaying: { gameStatus: "playing" },
+      win: { gameStatus: "win" },
+      gameOver: {
         gameStatus: "game-over",
         grid: (ctx) => revealMines(ctx.grid),
       },
-      revealCell: (ctx, event) => ({
-        cellsRevealed: ctx.cellsRevealed + 1,
-        mineRevealed: isCellMine(ctx.grid, event),
-        grid: doReveal(ctx.grid, event),
-      }),
+      revealCell: (ctx, event) => {
+        const cell = ctx.grid[event.row][event.col];
+
+        return match(cell)
+          .with(coveredCellWithoutMine, () => {
+            console.log("revealing safe cell");
+            return {
+              grid: doReveal(ctx.grid, event),
+              cellsRevealed: ctx.cellsRevealed + 1,
+              gameStatus: "playing",
+            };
+          })
+          .with(coveredCellWithMine, () => {
+            console.log("revealing unsafe cell");
+            return {
+              grid: revealMines(ctx.grid),
+              gameStatus: "game-over",
+            };
+          })
+          .otherwise(() => ({}));
+      },
       toggleFlag: (state, { row, col }) => {
         const newGrid = state.grid.map((r) => [...r]);
         const cell = newGrid[row][col];
