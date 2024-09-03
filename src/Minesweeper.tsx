@@ -3,11 +3,12 @@ import type { Cell, CellCoordinates } from "./types";
 
 import { match } from "ts-pattern";
 import {
+  createEffect,
   createMemo,
   createRenderEffect,
-  Index,
   onCleanup,
   onMount,
+  untrack,
 } from "solid-js";
 import { useSelector } from "@xstate/store/solid";
 import {
@@ -22,11 +23,10 @@ import {
 import { createMinesweeperStore } from "./store";
 
 import {
-  // selectCellAdjacentMines,
+  selectCell,
   selectFace,
   selectGameStatus,
   selectIsPlayerRevealing,
-  // selectCell,
 } from "./selectors";
 
 const baseCellStyle =
@@ -34,7 +34,6 @@ const baseCellStyle =
 
 type CellComponent = Component<
   CellCoordinates & {
-    cell: Accessor<Cell>;
     store: ReturnType<typeof createMinesweeperStore>;
   }
 >;
@@ -44,28 +43,28 @@ const CoveredCell: CellComponent = ({ row, col, store }) => {
 
   const uncoverCell = (e: MouseEvent) => {
     e.preventDefault();
-
-    console.log("uncovering cell");
-
     store.send({ type: "revealCell", row, col });
   };
 
   const toggleFlag = (e: MouseEvent) => {
     e.preventDefault();
-
-    console.log("toggling flag");
-
     store.send({ type: "toggleFlag", row, col });
   };
 
   const setRevealing = (e: MouseEvent) => {
     e.preventDefault();
 
-    if (e.button !== 0) {
-      return;
+    if (e.button === 0) {
+      store.send({ type: "setIsPlayerRevealing", to: true });
     }
+  };
 
-    store.send({ type: "setIsPlayerRevealing", to: true });
+  const unsetRevealing = (e: MouseEvent) => {
+    e.preventDefault();
+
+    if (revealing()) {
+      store.send({ type: "setIsPlayerRevealing", to: false });
+    }
   };
 
   return (
@@ -73,18 +72,16 @@ const CoveredCell: CellComponent = ({ row, col, store }) => {
       class={`${baseCellStyle} bg-slate-900 hover:bg-slate-700 focus:ring-slate-400 dark:bg-slate-700 dark:hover:bg-slate-600`}
       onClick={uncoverCell}
       onContextMenu={toggleFlag}
-      onMouseLeave={() =>
-        revealing
-          ? store.send({ type: "setIsPlayerRevealing", to: false })
-          : null
-      }
+      onMouseLeave={unsetRevealing}
       onMouseDown={setRevealing}
       onMouseUp={() => store.send({ type: "setIsPlayerRevealing", to: false })}
     ></button>
   );
 };
 
-const RevealedCell: CellComponent = ({ row, col, cell, store }) => {
+const RevealedCell: CellComponent = ({ store }) => {
+  const cell = useSelector(store, selectCell({ row: 0, col: 0 }));
+
   return (
     <button
       class={`${baseCellStyle} bg-slate-400 focus:ring-slate-500 dark:bg-slate-400`}
@@ -118,25 +115,20 @@ const RevealedBomb: Component = () => (
   </button>
 );
 
-const Cell: CellComponent = ({ row, col, cell, store }) => {
-  // const cell = useSelector(
-  //   store,
-  //   selectCell({ row, col }),
-  // );
+const Cell: CellComponent = ({ row, col, store }) => {
+  const cell = useSelector(store, selectCell({ row, col }));
 
   createRenderEffect(() => {
-    console.log("render Cell");
+    console.log("render Cell", cell());
   });
 
   return match(cell())
     .with(coveredCell, coveredCellWithMine, coveredCellWithoutMine, () => (
-      <CoveredCell cell={cell} row={row} col={col} store={store} />
+      <CoveredCell row={row} col={col} store={store} />
     ))
-    .with(flaggedCell, () => (
-      <FlaggedCell cell={cell} row={row} col={col} store={store} />
-    ))
+    .with(flaggedCell, () => <FlaggedCell row={row} col={col} store={store} />)
     .with(revealedClearCell, () => (
-      <RevealedCell cell={cell} row={row} col={col} store={store} />
+      <RevealedCell row={row} col={col} store={store} />
     ))
     .with(revealedCellWithMine, () => <RevealedBomb />)
     .exhaustive();
@@ -153,7 +145,7 @@ const Board: Component<{
 
   return (
     <div class="flex gap-1 flex-col">
-      <Index each={board()}>
+      {/* <Index each={board()}>
         {(item, rowIndex) => (
           <div class="flex gap-1">
             <Index each={item()}>
@@ -163,14 +155,14 @@ const Board: Component<{
             </Index>
           </div>
         )}
-      </Index>
-      {/* {board().map((row, rowIndex) => (
+      </Index> */}
+      {board().map((row, rowIndex) => (
         <div class="flex gap-1">
           {row.map((_, colIndex) => (
             <Cell row={rowIndex} col={colIndex} store={store} />
           ))}
         </div>
-      ))} */}
+      ))}
     </div>
   );
 };
@@ -211,13 +203,13 @@ export const Minesweeper: Component = () => {
   let interval: number | undefined;
   const gameStatus = useSelector(store, selectGameStatus);
 
-  // createEffect(() => {
-  //   const subscription = store.subscribe((state) => {
-  //     console.log(state);
-  //   });
+  createEffect(() => {
+    const subscription = store.subscribe((state) => {
+      console.log(state);
+    });
 
-  //   return () => subscription.unsubscribe();
-  // });
+    return () => subscription.unsubscribe();
+  });
 
   createMemo(() => {
     if (gameStatus() === "playing") {
