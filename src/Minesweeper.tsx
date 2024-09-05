@@ -25,9 +25,13 @@ import { createMinesweeperStore } from "./store";
 import {
   compareCells,
   selectCell,
+  selectCellAdjacentMines,
   selectFace,
   selectGameStatus,
-  selectGrid,
+  selectCells,
+  selectIsCellFlagged,
+  selectIsCellMine,
+  selectIsCellRevealed,
   selectIsPlayerRevealing,
 } from "./selectors";
 
@@ -120,13 +124,27 @@ const RevealedBomb: Component = () => (
 
 const Cell: CellComponent = ({ row, col, store }) => {
   // const cell = useSelector(store, selectCell({ row, col }), compareCells);
-  const cell = useSelector(store, selectCell({ row, col }));
+  // const cell = useSelector(store, selectCell({ row, col }));
+  const isRevealed = useSelector(store, selectIsCellRevealed({ row, col }));
+  const isFlagged = useSelector(store, selectIsCellFlagged({ row, col }));
+  const isMine = useSelector(store, selectIsCellMine({ row, col }));
+  const adjacentMines = useSelector(
+    store,
+    selectCellAdjacentMines({ row, col })
+  );
+
+  const cell = {
+    mine: isMine(),
+    revealed: isRevealed(),
+    flagged: isFlagged(),
+    adjacentMines: adjacentMines(),
+  } as Cell;
 
   createRenderEffect(() => {
-    console.log("render Cell", cell());
+    console.log("render Cell", cell);
   });
 
-  return match(cell())
+  return match(cell)
     .with(coveredCell, coveredCellWithMine, coveredCellWithoutMine, () => (
       <CoveredCell row={row} col={col} store={store} />
     ))
@@ -141,7 +159,7 @@ const Cell: CellComponent = ({ row, col, store }) => {
 const Grid: Component<{
   store: ReturnType<typeof createMinesweeperStore>;
 }> = ({ store }) => {
-  const grid = useSelector(store, selectGrid);
+  const grid = useSelector(store, selectCells);
 
   createRenderEffect(() => {
     console.log("render Board");

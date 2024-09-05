@@ -6,6 +6,8 @@ import type {
 import { P } from "ts-pattern";
 
 export const coveredCell = P.shape({
+  x: P.number,
+  y: P.number,
   revealed: false,
   flagged: false,
   mine: P.boolean,
@@ -13,6 +15,8 @@ export const coveredCell = P.shape({
 } as const);
 
 export const coveredCellWithoutMine = P.shape({
+  x: P.number,
+  y: P.number,
   revealed: false,
   flagged: false,
   mine: false,
@@ -20,6 +24,8 @@ export const coveredCellWithoutMine = P.shape({
 } as const);
 
 export const coveredCellWithMine = P.shape({
+  x: P.number,
+  y: P.number,
   revealed: false,
   flagged: false,
   mine: true,
@@ -27,6 +33,8 @@ export const coveredCellWithMine = P.shape({
 } as const);
 
 export const flaggedCell = P.shape({
+  x: P.number,
+  y: P.number,
   revealed: false,
   flagged: true,
   mine: P.boolean,
@@ -34,6 +42,8 @@ export const flaggedCell = P.shape({
 } as const);
 
 export const revealedCell = P.shape({
+  x: P.number,
+  y: P.number,
   flagged: false,
   revealed: true,
   mine: P.boolean,
@@ -41,6 +51,8 @@ export const revealedCell = P.shape({
 } as const);
 
 export const revealedCellWithMine = P.shape({
+  x: P.number,
+  y: P.number,
   revealed: true,
   flagged: false,
   mine: true,
@@ -48,6 +60,8 @@ export const revealedCellWithMine = P.shape({
 } as const);
 
 export const revealedClearCell = P.shape({
+  x: P.number,
+  y: P.number,
   revealed: true,
   flagged: false,
   mine: false,
@@ -63,7 +77,6 @@ export const anyCell = P.union(
   revealedCellWithMine
 );
 
-const grid = P.array(P.array(anyCell));
 const cellCoordinates = P.shape({ row: P.number, col: P.number });
 const configuration = P.shape({
   width: P.number,
@@ -71,9 +84,11 @@ const configuration = P.shape({
   mines: P.number,
 });
 
+const cells = P.map(P.string, anyCell);
+
 const gameState = P.shape({
   config: configuration,
-  grid: grid,
+  cells: cells,
   gameStatus: P.union("ready", "playing", "win", "game-over"),
   cellsRevealed: P.number,
   flagsLeft: P.number,
@@ -88,7 +103,7 @@ export type RevealedClearCell = P.infer<typeof revealedClearCell>;
 export type RevealedMine = P.infer<typeof revealedCellWithMine>;
 export type Cell = P.infer<typeof anyCell>;
 
-export type GameGrid = P.infer<typeof grid>;
+export type Cells = P.infer<typeof cells>;
 export type Configuration = P.infer<typeof configuration>;
 export type CellCoordinates = P.infer<typeof cellCoordinates>;
 export type GameState = P.infer<typeof gameState>;

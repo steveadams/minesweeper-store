@@ -1,4 +1,7 @@
 import { createStore } from "@xstate/store";
+import { match } from "ts-pattern";
+import { ReactiveMap } from "@solid-primitives/map";
+
 import {
   coveredCellWithMine,
   coveredCellWithoutMine,
@@ -6,61 +9,31 @@ import {
   type CellCoordinates,
   type Configuration,
   type GameEventMap,
-  type GameGrid,
+  type Cells,
   type GameState,
   type GameStore,
   type RevealedClearCell,
 } from "./types";
-import { match } from "ts-pattern";
 
-const createEmptyCell = () =>
-  ({
-    mine: false,
-    revealed: false,
-    flagged: false,
-    adjacentMines: 0,
-  } as Cell);
+const cellKey = (row: number, col: number) => `${row},${col}`;
+
+const createEmptyCell = (): Cell => ({
+  x: 0,
+  y: 0,
+  mine: false,
+  revealed: false,
+  flagged: false,
+  adjacentMines: 0,
+});
 
 const randomIndex = (length: number) => Math.floor(Math.random() * length);
 
-const createGrid = (config: Configuration): GameGrid => {
-  const grid: GameGrid = Array.from({ length: config.height }, () =>
-    Array.from({ length: config.width }, createEmptyCell)
-  );
-
-  // Randomly place mines into cells
-  let minesPlaced = 0;
-  while (minesPlaced < config.mines) {
-    const row = randomIndex(config.height);
-    const col = randomIndex(config.width);
-
-    if (!grid[row][col].mine) {
-      grid[row][col] = { ...grid[row][col], mine: true } as Cell;
-      minesPlaced++;
-    }
-  }
-
-  // Update each cell with its adjacent mine count
-  grid.forEach((row, rowIndex) =>
-    row.forEach((cell, colIndex) => {
-      const adjacentMines = getValidNeighbourCoordinates(
-        grid,
-        rowIndex,
-        colIndex
-      ).reduce((count, [r, c]) => count + (grid[r][c].mine ? 1 : 0), 0);
-
-      grid[rowIndex][colIndex] = { ...cell, adjacentMines };
-    })
-  );
-
-  return grid;
-};
-
 const getValidNeighbourCoordinates = (
-  grid: GameState["grid"],
+  width: number,
+  height: number,
   row: number,
   col: number
-) =>
+): [number, number][] =>
   [
     [-1, -1],
     [-1, 0],
@@ -71,15 +44,58 @@ const getValidNeighbourCoordinates = (
     [1, 0],
     [1, 1],
   ]
-    .map(([x, y]) => [row + x, col + y])
-    .filter(
-      ([x, y]) => x >= 0 && y >= 0 && x < grid.length && y < grid[0].length
-    );
+    .map(([dx, dy]) => [row + dx, col + dy])
+    .filter(([x, y]) => x >= 0 && y >= 0 && x < height && y < width);
 
-const revealCell = (
-  grid: GameGrid,
-  { row, col }: CellCoordinates
-): GameGrid => {
+const createCells = (config: Configuration): Cells => {
+  const cells: Cells = new ReactiveMap<string, Cell>();
+
+  // Initialize all cells
+  for (let row = 0; row < config.height; row++) {
+    for (let col = 0; col < config.width; col++) {
+      cells.set(cellKey(row, col), createEmptyCell());
+    }
+  }
+
+  // Randomly place mines
+  let minesPlaced = 0;
+  while (minesPlaced < config.mines) {
+    const row = randomIndex(config.height);
+    const col = randomIndex(config.width);
+    const key = cellKey(row, col);
+
+    if (!cells.get(key)!.mine) {
+      cells.set(key, { ...cells.get(key)!, mine: true });
+      minesPlaced++;
+    }
+  }
+
+  // Calculate adjacent mines for each cell
+  for (let row = 0; row < config.height; row++) {
+    for (let col = 0; col < config.width; col++) {
+      const key = cellKey(row, col);
+      const cell = cells.get(key)!;
+
+      if (!cell.mine) {
+        const adjacentMines = getValidNeighbourCoordinates(
+          config.width,
+          config.height,
+          row,
+          col
+        ).reduce(
+          (count, [r, c]) => count + (cells.get(cellKey(r, c))!.mine ? 1 : 0),
+          0
+        );
+
+        cells.set(key, { ...cell, adjacentMines });
+      }
+    }
+  }
+
+  return cells;
+};
+
+const revealCell = (grid: Cells, { row, col }: CellCoordinates): Cells => {
   const currentCell = grid[row][col];
 
   if (currentCell.revealed || currentCell.flagged) {
@@ -88,7 +104,6 @@ const revealCell = (
 
   // Make a deep copy of the grid once
   const newGrid = grid.map((row) => [...row]);
-
   const stack = [{ row, col }];
 
   while (stack.length > 0) {
@@ -112,25 +127,43 @@ const revealCell = (
   return newGrid;
 };
 
-const revealMines = (grid: GameGrid): GameGrid =>
-  grid.map((row) =>
-    row.map((cell) =>
-      match(cell)
-        .with(
-          coveredCellWithMine,
-          () => ({ ...cell, revealed: true } as RevealedClearCell)
-        )
-        .otherwise((c) => c)
-    )
-  );
+const revealMines = (cells: Cells): Cells => {
+  // iterate over map of cells and set revealed to true for mines
+  cells.forEach((cell) => {
+    if (cell.mine) {
+      cell.revealed = true;
+    }
+  });
+  // for (let row = 0; row < cells.size; row++) {
+  //   for (let col = 0; col < cells.size; col++) {
+  //     const cell = cells.get(cellKey(row, col));
+  //     if (cell.mine) {
+  //       cells.set(cellKey(row, col), {
+  //         ...cell,
+  //         revealed: true,
+  //       } as RevealedClearCell);
+  //     }
+  //   }
+  // }
 
-export const createMinesweeperStore = (config: Configuration): GameStore => {
-  const initialGrid = createGrid(config);
+  // grid.map((row) =>
+  //   row.map((cell) =>
+  //     match(cell)
+  //       .with(
+  //         coveredCellWithMine,
+  //         () => ({ ...cell, revealed: true } as RevealedClearCell)
+  //       )
+  //       .otherwise((c) => c)
+  //   )
+  // );
+  return cells;
+};
 
-  return createStore<GameState, GameEventMap>(
+export const createMinesweeperStore = (config: Configuration): GameStore =>
+  createStore<GameState, GameEventMap>(
     {
       config,
-      grid: initialGrid,
+      cells: initialCells,
       gameStatus: "ready",
       cellsRevealed: 0,
       flagsLeft: config.mines,
@@ -139,7 +172,7 @@ export const createMinesweeperStore = (config: Configuration): GameStore => {
     },
     {
       initialize: {
-        grid: ({ config }) => createGrid(config),
+        grid: ({ config }) => createCells(config),
         gameStatus: "ready",
       },
       startPlaying: { gameStatus: "playing" },
@@ -200,4 +233,3 @@ export const createMinesweeperStore = (config: Configuration): GameStore => {
       tick: ({ timeElapsed }) => ({ timeElapsed: timeElapsed + 1 }),
     }
   );
-};
