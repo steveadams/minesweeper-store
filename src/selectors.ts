@@ -3,6 +3,14 @@ import { Cell, CellCoordinates, GameSnapshot, GameState } from "./types";
 
 export const selectGameStatus = (s: GameSnapshot) => s.context.gameStatus;
 
+export const selectGrid = (s: GameSnapshot) => s.context.grid;
+
+export const compareCells = (a: Cell, b: Cell) =>
+  a.mine === b.mine &&
+  a.revealed === b.revealed &&
+  a.flagged === b.flagged &&
+  a.adjacentMines === b.adjacentMines;
+
 const getCell = (s: GameSnapshot, { row, col }: CellCoordinates) =>
   s.context.grid[row][col] as Cell;
 

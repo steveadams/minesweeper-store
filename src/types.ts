@@ -28,7 +28,7 @@ export const coveredCellWithMine = P.shape({
 
 export const flaggedCell = P.shape({
   revealed: false,
-  flagged: false,
+  flagged: true,
   mine: P.boolean,
   adjacentMines: P.number,
 } as const);

@@ -1,13 +1,8 @@
 import { createStore } from "@xstate/store";
 import {
-  Cell,
-  CoveredCell,
   coveredCellWithMine,
   coveredCellWithoutMine,
-  FlaggedCell,
-  RevealedCell,
-  revealedCellWithMine,
-  revealedClearCell,
+  type Cell,
   type CellCoordinates,
   type Configuration,
   type GameEventMap,
@@ -81,38 +76,37 @@ const getValidNeighbourCoordinates = (
       ([x, y]) => x >= 0 && y >= 0 && x < grid.length && y < grid[0].length
     );
 
-const doReveal = (grid: GameGrid, { row, col }: CellCoordinates) => {
-  const newGrid = [...grid];
-
-  revealCell(newGrid, { row, col });
-
-  return newGrid;
-};
-
 const revealCell = (
   grid: GameGrid,
   { row, col }: CellCoordinates
 ): GameGrid => {
   const currentCell = grid[row][col];
-  console.log("revealing cell", currentCell);
 
   if (currentCell.revealed || currentCell.flagged) {
-    // If the cell is already revealed or flagged, return the grid as is
     return grid;
   }
 
-  // Reveal the current cell
-  const revealedCell = { ...currentCell, revealed: true };
-  const newGrid = [...grid];
-  newGrid[row][col] = revealedCell;
+  // Make a deep copy of the grid once
+  const newGrid = grid.map((row) => [...row]);
 
-  // If there are no adjacent mines and the cell is not a mine, reveal neighbors
-  if (revealedCell.adjacentMines === 0 && !revealedCell.mine) {
-    console.log("revealing neighbors");
-    getValidNeighbourCoordinates(newGrid, row, col).forEach(([x, y]) => {
-      console.log("revealing neighbor", x, y);
-      return revealCell(newGrid, { row: x, col: y });
-    });
+  const stack = [{ row, col }];
+
+  while (stack.length > 0) {
+    const { row, col } = stack.pop();
+    const cell = newGrid[row][col];
+
+    if (cell.revealed || cell.flagged) continue;
+
+    const revealedCell = { ...cell, revealed: true };
+    newGrid[row][col] = revealedCell as Cell;
+
+    if (revealedCell.adjacentMines === 0 && !revealedCell.mine) {
+      getValidNeighbourCoordinates(newGrid, row, col).forEach(([x, y]) => {
+        if (!newGrid[x][y].revealed && !newGrid[x][y].flagged) {
+          stack.push({ row: x, col: y });
+        }
+      });
+    }
   }
 
   return newGrid;
@@ -156,22 +150,18 @@ export const createMinesweeperStore = (config: Configuration): GameStore => {
       },
       revealCell: (ctx, event) => {
         const cell = ctx.grid[event.row][event.col];
-        const newGrid = [...ctx.grid];
-        const newCell = { ...cell, revealed: true } as RevealedCell;
-        newGrid[event.row][event.col] = newCell;
+        console.log("revealing cell", cell);
 
-        console.log("revealed cell", newCell);
-
-        return match(newCell)
-          .with(revealedClearCell, () => {
+        return match(cell)
+          .with(coveredCellWithoutMine, () => {
             console.log("revealing safe cell");
             return {
-              grid: doReveal(ctx.grid, event),
+              grid: revealCell(ctx.grid, event),
               cellsRevealed: ctx.cellsRevealed + 1,
               gameStatus: "playing",
             };
           })
-          .with(revealedCellWithMine, () => {
+          .with(coveredCellWithMine, () => {
             console.log("revealing unsafe cell");
             return {
               grid: revealMines(ctx.grid),
