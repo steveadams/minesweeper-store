@@ -1,5 +1,5 @@
 import { match } from "ts-pattern";
-import { Cell, CellCoordinates, GameSnapshot, GameState } from "./types";
+import { Cell, GameSnapshot, GameState } from "./types";
 
 export const selectGameStatus = (s: GameSnapshot) => s.context.gameStatus;
 
@@ -12,27 +12,23 @@ export const compareCells = (a: Cell, b: Cell) =>
     a.flagged === b.flagged &&
     a.adjacentMines === b.adjacentMines);
 
-const getCell = (s: GameSnapshot, { row, col }: CellCoordinates) =>
-  s.context.cells.get(cellKey(row, col)) as Cell;
+const getCell = (s: GameSnapshot, index: number) =>
+  s.context.cells[index] as Cell;
 
-export const selectCell = (coords: CellCoordinates) => (s: GameSnapshot) =>
-  getCell(s, coords);
+export const selectCell = (index: number) => (s: GameSnapshot) =>
+  getCell(s, index);
 
-export const selectCellAdjacentMines =
-  (coords: CellCoordinates) => (s: GameSnapshot) =>
-    getCell(s, coords).adjacentMines;
+export const selectCellAdjacentMines = (index: number) => (s: GameSnapshot) =>
+  getCell(s, index).adjacentMines;
 
-export const selectIsCellRevealed =
-  (coords: CellCoordinates) => (s: GameSnapshot) =>
-    getCell(s, coords).revealed;
+export const selectIsCellRevealed = (index: number) => (s: GameSnapshot) =>
+  getCell(s, index).revealed;
 
-export const selectIsCellFlagged =
-  (coords: CellCoordinates) => (s: GameSnapshot) =>
-    getCell(s, coords).flagged;
+export const selectIsCellFlagged = (index: number) => (s: GameSnapshot) =>
+  getCell(s, index).flagged;
 
-export const selectIsCellMine =
-  (coords: CellCoordinates) => (s: GameSnapshot) =>
-    getCell(s, coords).mine;
+export const selectIsCellMine = (index: number) => (s: GameSnapshot) =>
+  getCell(s, index).mine;
 
 export const selectIsPlayerRevealing = (s: GameSnapshot) =>
   s.context.playerIsRevealingCell;

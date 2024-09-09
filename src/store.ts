@@ -6,20 +6,26 @@ import {
   coveredCellWithMine,
   coveredCellWithoutMine,
   type Cell,
-  type CellCoordinates,
   type Configuration,
   type GameEventMap,
   type Cells,
   type GameState,
   type GameStore,
-  type RevealedClearCell,
 } from "./types";
 
-const cellKey = (row: number, col: number) => `${row},${col}`;
+// Turn x,y coordinates into an index for a 1D array
+function cellIndex(gridWidth: number, x: number, y: number) {
+  return y * gridWidth + x;
+}
+
+function getCoordinates(gridWidth: number, index: number) {
+  return {
+    x: index % gridWidth,
+    y: Math.floor(index / gridWidth),
+  };
+}
 
 const createEmptyCell = (): Cell => ({
-  x: 0,
-  y: 0,
   mine: false,
   revealed: false,
   flagged: false,
@@ -28,13 +34,15 @@ const createEmptyCell = (): Cell => ({
 
 const randomIndex = (length: number) => Math.floor(Math.random() * length);
 
-const getValidNeighbourCoordinates = (
-  width: number,
-  height: number,
-  row: number,
-  col: number
-): [number, number][] =>
-  [
+function getValidNeighbourIndices(
+  gridWidth: number,
+  gridHeight: number,
+  index: number
+): number[] {
+  const row = Math.floor(index / gridWidth);
+  const col = index % gridWidth;
+
+  const neighbours = [
     [-1, -1],
     [-1, 0],
     [-1, 1],
@@ -43,18 +51,33 @@ const getValidNeighbourCoordinates = (
     [1, -1],
     [1, 0],
     [1, 1],
-  ]
-    .map(([dx, dy]) => [row + dx, col + dy])
-    .filter(([x, y]) => x >= 0 && y >= 0 && x < height && y < width);
+  ];
+
+  return neighbours
+    .map(([dx, dy]) => {
+      const newRow = row + dx;
+      const newCol = col + dy;
+      return newRow * gridWidth + newCol;
+    })
+    .filter((neighbourIndex) => {
+      const neighbourRow = Math.floor(neighbourIndex / gridWidth);
+      const neighbourCol = neighbourIndex % gridWidth;
+      return (
+        neighbourRow >= 0 &&
+        neighbourRow < gridHeight &&
+        neighbourCol >= 0 &&
+        neighbourCol < gridWidth
+      );
+    });
+}
 
 const createCells = (config: Configuration): Cells => {
-  const cells: Cells = new ReactiveMap<string, Cell>();
+  const totalCells = config.width * config.height;
+  const cells: Cell[] = new Array(totalCells);
 
-  // Initialize all cells
-  for (let row = 0; row < config.height; row++) {
-    for (let col = 0; col < config.width; col++) {
-      cells.set(cellKey(row, col), createEmptyCell());
-    }
+  // Fill the array using a single loop
+  for (let i = 0; i < totalCells; i++) {
+    cells[i] = createEmptyCell();
   }
 
   // Randomly place mines
@@ -62,10 +85,10 @@ const createCells = (config: Configuration): Cells => {
   while (minesPlaced < config.mines) {
     const row = randomIndex(config.height);
     const col = randomIndex(config.width);
-    const key = cellKey(row, col);
+    const idx = cellIndex(config.width, row, col);
 
-    if (!cells.get(key)!.mine) {
-      cells.set(key, { ...cells.get(key)!, mine: true });
+    if (!cells[idx]!.mine) {
+      cells[idx] = { ...cells[idx], mine: true };
       minesPlaced++;
     }
   }
@@ -73,21 +96,20 @@ const createCells = (config: Configuration): Cells => {
   // Calculate adjacent mines for each cell
   for (let row = 0; row < config.height; row++) {
     for (let col = 0; col < config.width; col++) {
-      const key = cellKey(row, col);
-      const cell = cells.get(key)!;
+      const idx = cellIndex(config.width, row, col);
+      const cell = cells[idx];
 
       if (!cell.mine) {
-        const adjacentMines = getValidNeighbourCoordinates(
+        const adjacentMines = getValidNeighbourIndices(
           config.width,
           config.height,
-          row,
-          col
+          idx
         ).reduce(
-          (count, [r, c]) => count + (cells.get(cellKey(r, c))!.mine ? 1 : 0),
+          (count, innerIdx) => count + (cells[innerIdx]!.mine ? 1 : 0),
           0
         );
 
-        cells.set(key, { ...cell, adjacentMines });
+        cells[idx] = { ...cell, adjacentMines };
       }
     }
   }
@@ -95,36 +117,38 @@ const createCells = (config: Configuration): Cells => {
   return cells;
 };
 
-const revealCell = (grid: Cells, { row, col }: CellCoordinates): Cells => {
-  const currentCell = grid[row][col];
+const revealCell = (config: Configuration, cells: Cells, index: number) => {
+  const currentCell = cells[index];
 
-  if (currentCell.revealed || currentCell.flagged) {
-    return grid;
+  if (currentCell && (currentCell.revealed || currentCell.flagged)) {
+    return cells;
   }
 
   // Make a deep copy of the grid once
-  const newGrid = grid.map((row) => [...row]);
-  const stack = [{ row, col }];
+  const newCells = cells;
+  const stack = [index];
 
   while (stack.length > 0) {
-    const { row, col } = stack.pop();
-    const cell = newGrid[row][col];
+    const idx = stack.pop();
+    const cell = newCells[idx];
 
     if (cell.revealed || cell.flagged) continue;
 
     const revealedCell = { ...cell, revealed: true };
-    newGrid[row][col] = revealedCell as Cell;
+    newCells[idx] = revealedCell as Cell;
 
     if (revealedCell.adjacentMines === 0 && !revealedCell.mine) {
-      getValidNeighbourCoordinates(newGrid, row, col).forEach(([x, y]) => {
-        if (!newGrid[x][y].revealed && !newGrid[x][y].flagged) {
-          stack.push({ row: x, col: y });
+      getValidNeighbourIndices(config.width, config.height, idx).forEach(
+        (innerIdx) => {
+          if (!newCells[innerIdx].revealed && newCells[innerIdx].flagged) {
+            stack.push(innerIdx);
+          }
         }
-      });
+      );
     }
   }
 
-  return newGrid;
+  return newCells;
 };
 
 const revealMines = (cells: Cells): Cells => {
@@ -163,7 +187,7 @@ export const createMinesweeperStore = (config: Configuration): GameStore =>
   createStore<GameState, GameEventMap>(
     {
       config,
-      cells: initialCells,
+      cells: createCells(config),
       gameStatus: "ready",
       cellsRevealed: 0,
       flagsLeft: config.mines,
@@ -172,24 +196,24 @@ export const createMinesweeperStore = (config: Configuration): GameStore =>
     },
     {
       initialize: {
-        grid: ({ config }) => createCells(config),
+        cells: ({ config }) => createCells(config),
         gameStatus: "ready",
       },
       startPlaying: { gameStatus: "playing" },
       win: { gameStatus: "win" },
       gameOver: {
         gameStatus: "game-over",
-        grid: (ctx) => revealMines(ctx.grid),
+        cells: (ctx) => revealMines(ctx.cells),
       },
       revealCell: (ctx, event) => {
-        const cell = ctx.grid[event.row][event.col];
+        const cell = ctx.cells[event.index];
         console.log("revealing cell", cell);
 
         return match(cell)
           .with(coveredCellWithoutMine, () => {
             console.log("revealing safe cell");
             return {
-              grid: revealCell(ctx.grid, event),
+              cells: revealCell(ctx.config, ctx.cells, event.index),
               cellsRevealed: ctx.cellsRevealed + 1,
               gameStatus: "playing",
             };
@@ -197,7 +221,7 @@ export const createMinesweeperStore = (config: Configuration): GameStore =>
           .with(coveredCellWithMine, () => {
             console.log("revealing unsafe cell");
             return {
-              grid: revealMines(ctx.grid),
+              cells: revealMines(ctx.cells),
               gameStatus: "game-over",
             };
           })
@@ -207,9 +231,8 @@ export const createMinesweeperStore = (config: Configuration): GameStore =>
             return {};
           });
       },
-      toggleFlag: (state, { row, col }) => {
-        const newGrid = state.grid.map((r) => [...r]);
-        const cell = newGrid[row][col];
+      toggleFlag: (state, { index }) => {
+        const cell = state.cells[index];
         const flagDelta = cell.flagged ? 1 : -1;
 
         // Turn into a guard
@@ -222,11 +245,11 @@ export const createMinesweeperStore = (config: Configuration): GameStore =>
           revealed: false,
           flagged: !cell.flagged,
         };
-        newGrid[row][col] = newCell as Cell;
+        state.cells[index] = newCell as Cell;
 
         return {
           flagsLeft: state.flagsLeft + flagDelta,
-          grid: newGrid,
+          cells: [...state.cells],
         };
       },
       setIsPlayerRevealing: (_, event) => ({ playerIsRevealingCell: event.to }),
