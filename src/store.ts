@@ -1,6 +1,5 @@
 import { createStore } from "@xstate/store";
 import { match } from "ts-pattern";
-import { ReactiveMap } from "@solid-primitives/map";
 
 import {
   coveredCellWithMine,
@@ -16,13 +15,6 @@ import {
 // Turn x,y coordinates into an index for a 1D array
 function cellIndex(gridWidth: number, x: number, y: number) {
   return y * gridWidth + x;
-}
-
-function getCoordinates(gridWidth: number, index: number) {
-  return {
-    x: index % gridWidth,
-    y: Math.floor(index / gridWidth),
-  };
 }
 
 const createEmptyCell = (): Cell => ({
@@ -117,70 +109,37 @@ const createCells = (config: Configuration): Cells => {
   return cells;
 };
 
-const revealCell = (config: Configuration, cells: Cells, index: number) => {
-  const currentCell = cells[index];
-
-  if (currentCell && (currentCell.revealed || currentCell.flagged)) {
-    return cells;
-  }
-
-  // Make a deep copy of the grid once
-  const newCells = cells;
+const revealCells = (config: Configuration, cells: Cells, index: number) => {
+  const updatedCells = [...cells];
   const stack = [index];
 
-  while (stack.length > 0) {
+  while (stack.length) {
     const idx = stack.pop();
-    const cell = newCells[idx];
+    const cell = updatedCells[idx];
 
-    if (cell.revealed || cell.flagged) continue;
+    if (!cell || cell.revealed || cell.flagged) {
+      continue;
+    }
 
-    const revealedCell = { ...cell, revealed: true };
-    newCells[idx] = revealedCell as Cell;
+    updatedCells[idx] = { ...cell, revealed: true } as Cell;
 
-    if (revealedCell.adjacentMines === 0 && !revealedCell.mine) {
-      getValidNeighbourIndices(config.width, config.height, idx).forEach(
-        (innerIdx) => {
-          if (!newCells[innerIdx].revealed && newCells[innerIdx].flagged) {
-            stack.push(innerIdx);
-          }
-        }
-      );
+    if (cell.adjacentMines === 0) {
+      stack.push(...getValidNeighbourIndices(config.width, config.height, idx));
     }
   }
-
-  return newCells;
+  return updatedCells;
 };
 
 const revealMines = (cells: Cells): Cells => {
-  // iterate over map of cells and set revealed to true for mines
-  cells.forEach((cell) => {
-    if (cell.mine) {
-      cell.revealed = true;
+  const newCells = [...cells];
+
+  newCells.forEach((cell, index) => {
+    if (cell.mine && !cell.revealed) {
+      newCells[index] = { ...cell, revealed: true } as Cell;
     }
   });
-  // for (let row = 0; row < cells.size; row++) {
-  //   for (let col = 0; col < cells.size; col++) {
-  //     const cell = cells.get(cellKey(row, col));
-  //     if (cell.mine) {
-  //       cells.set(cellKey(row, col), {
-  //         ...cell,
-  //         revealed: true,
-  //       } as RevealedClearCell);
-  //     }
-  //   }
-  // }
 
-  // grid.map((row) =>
-  //   row.map((cell) =>
-  //     match(cell)
-  //       .with(
-  //         coveredCellWithMine,
-  //         () => ({ ...cell, revealed: true } as RevealedClearCell)
-  //       )
-  //       .otherwise((c) => c)
-  //   )
-  // );
-  return cells;
+  return newCells;
 };
 
 export const createMinesweeperStore = (config: Configuration): GameStore =>
@@ -207,19 +166,16 @@ export const createMinesweeperStore = (config: Configuration): GameStore =>
       },
       revealCell: (ctx, event) => {
         const cell = ctx.cells[event.index];
-        console.log("revealing cell", cell);
 
         return match(cell)
           .with(coveredCellWithoutMine, () => {
-            console.log("revealing safe cell");
             return {
-              cells: revealCell(ctx.config, ctx.cells, event.index),
+              cells: revealCells(ctx.config, ctx.cells, event.index),
               cellsRevealed: ctx.cellsRevealed + 1,
               gameStatus: "playing",
             };
           })
           .with(coveredCellWithMine, () => {
-            console.log("revealing unsafe cell");
             return {
               cells: revealMines(ctx.cells),
               gameStatus: "game-over",
@@ -235,23 +191,24 @@ export const createMinesweeperStore = (config: Configuration): GameStore =>
         const cell = state.cells[index];
         const flagDelta = cell.flagged ? 1 : -1;
 
-        // Turn into a guard
         if (!cell.flagged && !state.flagsLeft) {
           return state;
         }
 
+        const newCells = [...state.cells];
         const newCell = {
           ...cell,
           revealed: false,
           flagged: !cell.flagged,
         };
-        state.cells[index] = newCell as Cell;
+        newCells[index] = newCell as Cell;
 
         return {
           flagsLeft: state.flagsLeft + flagDelta,
-          cells: [...state.cells],
+          cells: newCells, // Return the new array
         };
       },
+
       setIsPlayerRevealing: (_, event) => ({ playerIsRevealingCell: event.to }),
       tick: ({ timeElapsed }) => ({ timeElapsed: timeElapsed + 1 }),
     }

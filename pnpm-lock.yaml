@@ -8,9 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@solid-primitives/map':
-        specifier: ^0.4.11
-        version: 0.4.11(solid-js@1.8.22)
       '@xstate/store':
         specifier: link:../xstate/packages/xstate-store
         version: link:../xstate/packages/xstate-store
@@ -487,11 +484,6 @@ packages:
     peerDependencies:
       solid-js: ^1.6.12
 
-  '@solid-primitives/map@0.4.11':
-    resolution: {integrity: sha512-OAD65RPxMDYv41oAvadPCqedZfDX92BbWLUC+Qwh9okVMDAF/5UM+t1916OAfGV01Cr30d/fxIT1x86P+gFgSQ==}
-    peerDependencies:
-      solid-js: ^1.6.12
-
   '@solid-primitives/media@2.2.9':
     resolution: {integrity: sha512-QUmU62D4/d9YWx/4Dvr/UZasIkIpqNXz7wosA5GLmesRW9XlPa3G5M6uOmTw73SByHNTCw0D6x8bSdtvvLgzvQ==}
     peerDependencies:
@@ -534,11 +526,6 @@ packages:
 
   '@solid-primitives/styles@0.0.111':
     resolution: {integrity: sha512-1mBxOGAPXmfD5oYCvqjKBDN7SuNjz2qz7RdH7KtsuNLQh6lpuSKadtHnLvru0Y8Vz1InqTJisBIy/6P5kyDmPw==}
-    peerDependencies:
-      solid-js: ^1.6.12
-
-  '@solid-primitives/trigger@1.0.11':
-    resolution: {integrity: sha512-4oc8grBzBit7ByXgE1aZ0QXfhdlhXaiFjDKYsOhRyUJa8fN4hdr2IgsYqjmHwxyjK+Dm2OUwkCI1bGkaLgtgXg==}
     peerDependencies:
       solid-js: ^1.6.12
 
@@ -1882,11 +1869,6 @@ snapshots:
       '@solid-primitives/utils': 6.2.3(solid-js@1.8.22)
       solid-js: 1.8.22
 
-  '@solid-primitives/map@0.4.11(solid-js@1.8.22)':
-    dependencies:
-      '@solid-primitives/trigger': 1.0.11(solid-js@1.8.22)
-      solid-js: 1.8.22
-
   '@solid-primitives/media@2.2.9(solid-js@1.8.22)':
     dependencies:
       '@solid-primitives/event-listener': 2.3.3(solid-js@1.8.22)
@@ -1934,11 +1916,6 @@ snapshots:
   '@solid-primitives/styles@0.0.111(solid-js@1.8.22)':
     dependencies:
       '@solid-primitives/rootless': 1.4.5(solid-js@1.8.22)
-      '@solid-primitives/utils': 6.2.3(solid-js@1.8.22)
-      solid-js: 1.8.22
-
-  '@solid-primitives/trigger@1.0.11(solid-js@1.8.22)':
-    dependencies:
       '@solid-primitives/utils': 6.2.3(solid-js@1.8.22)
       solid-js: 1.8.22
 
