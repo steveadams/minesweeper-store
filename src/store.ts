@@ -10,6 +10,7 @@ import {
   type Cells,
   type GameState,
   type GameStore,
+  RevealedCell,
 } from "./types";
 
 // Turn x,y coordinates into an index for a 1D array
@@ -135,14 +136,18 @@ const revealMines = (cells: Cells): Cells => {
 
   newCells.forEach((cell, index) => {
     if (cell.mine && !cell.revealed) {
-      newCells[index] = { ...cell, revealed: true } as Cell;
+      newCells[index] = {
+        ...cell,
+        flagged: false,
+        revealed: true,
+      } as RevealedCell;
     }
   });
 
   return newCells;
 };
 
-export const createMinesweeperStore = (config: Configuration): GameStore =>
+export const setupStore = (config: Configuration): GameStore =>
   createStore<GameState, GameEventMap>(
     {
       config,
@@ -181,11 +186,7 @@ export const createMinesweeperStore = (config: Configuration): GameStore =>
               gameStatus: "game-over",
             };
           })
-          .otherwise(() => {
-            console.log("Shouldn't happen");
-            throw new Error("Unexpected cell state");
-            return {};
-          });
+          .otherwise(() => ({}));
       },
       toggleFlag: (state, { index }) => {
         const cell = state.cells[index];

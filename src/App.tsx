@@ -1,9 +1,14 @@
 import type { Component } from "solid-js";
 import "./App.css";
-import { Minesweeper } from "./Minesweeper";
+import { Minesweeper } from "./components/Minesweeper";
+import { StoreProvider } from "./StoreContext";
 
 const App: Component = () => {
-  return <Minesweeper />;
+  return (
+    <StoreProvider>
+      <Minesweeper />
+    </StoreProvider>
+  );
 };
 
 export default App;

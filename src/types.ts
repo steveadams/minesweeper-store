@@ -5,15 +5,6 @@ import type {
 } from "@xstate/store";
 import { P } from "ts-pattern";
 
-const cell = P.shape({
-  x: P.number,
-  y: P.number,
-  revealed: P.boolean,
-  flagged: P.boolean,
-  mine: P.boolean,
-  adjacentMines: P.number,
-} as const);
-
 export const coveredCell = P.shape({
   revealed: false,
   flagged: false,
