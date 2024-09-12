@@ -166,22 +166,25 @@ export const setupStore = (config: Configuration): GameStore =>
         const cell = ctx.cells[event.index];
         let cellsRevealed = 0;
 
+        console.log("revealing cell", event.index, cell);
+
         return match(cell)
           .with(coveredCellWithoutMine, () => {
+            console.log("coveredCellWithoutMine");
             const updatedCells = [...ctx.cells];
             const stack = [event.index];
 
             while (stack.length) {
               const idx = stack.pop()!;
 
-              if (ctx.visitedCells.has(idx)) continue;
-
-              ctx.visitedCells.add(idx);
-
               const cell = updatedCells[idx];
-              if (!cell || cell.revealed || cell.flagged) {
+
+              if (ctx.visitedCells.has(idx) || cell.flagged) {
+                console.log("skip because visited or flagged");
                 continue;
               }
+
+              ctx.visitedCells.add(idx);
 
               updatedCells[idx] = { ...cell, revealed: true } as Cell;
               cellsRevealed++;
@@ -193,9 +196,14 @@ export const setupStore = (config: Configuration): GameStore =>
                   idx
                 );
 
-                neighbors.forEach((neighborIdx) => {
-                  if (!ctx.visitedCells.has(neighborIdx)) {
-                    stack.push(neighborIdx);
+                neighbors.forEach((neighbourIdx) => {
+                  // Ignore visited and flagged cells
+                  if (
+                    !ctx.visitedCells.has(neighbourIdx) ||
+                    !updatedCells[neighbourIdx].flagged ||
+                    !updatedCells[neighbourIdx].revealed
+                  ) {
+                    stack.push(neighbourIdx);
                   }
                 });
               }
@@ -205,6 +213,8 @@ export const setupStore = (config: Configuration): GameStore =>
             const playerWon =
               totalCellsRevealed ===
               ctx.config.width * ctx.config.height - ctx.config.mines;
+
+            console.log(ctx.visitedCells);
 
             return {
               cells: updatedCells,

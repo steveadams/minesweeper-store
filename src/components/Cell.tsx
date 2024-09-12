@@ -34,6 +34,7 @@ const CoveredCell: CellComponent = ({ index }) => {
 
   const revealCell = (e: MouseEvent) => {
     e.preventDefault();
+    console.log("reveal cell", index);
     store.send({ type: "revealCell", index });
   };
 
@@ -91,7 +92,7 @@ const FlaggedCell: CellComponent = ({ index }) => {
       onContextMenu={toggleFlag}
       class="bg-slate-900 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600"
     >
-      🚩``
+      🚩
     </BaseButton>
   );
 };
