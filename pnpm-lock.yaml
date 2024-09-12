@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@xstate/store':
-        specifier: link:../xstate/packages/xstate-store
-        version: link:../xstate/packages/xstate-store
+        specifier: ^2.3.0
+        version: 2.3.0(solid-js@1.8.22)
       solid-js:
         specifier: ^1.8.21
         version: 1.8.22
@@ -610,6 +610,17 @@ packages:
   '@typescript-eslint/visitor-keys@8.3.0':
     resolution: {integrity: sha512-RmZwrTbQ9QveF15m/Cl28n0LXD6ea2CjkhH5rQ55ewz3H24w+AMCJHPVYaZ8/0HoG8Z3cLLFFycRXxeO2tz9FA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@xstate/store@2.3.0':
+    resolution: {integrity: sha512-vdIlbI4TxtadYNrGrKezrR0Y0Hid2xYBm5ohk403ZsaU7p6IjCCaacF8t8tp9qUZnYuLYzldBMhiGwBuNzmCoA==}
+    peerDependencies:
+      react: ^18.2.0
+      solid-js: ^1.7.6
+    peerDependenciesMeta:
+      react:
+        optional: true
+      solid-js:
+        optional: true
 
   acorn-jsx@5.3.2:
     resolution: {integrity: sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==}
@@ -2031,6 +2042,10 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 8.3.0
       eslint-visitor-keys: 3.4.3
+
+  '@xstate/store@2.3.0(solid-js@1.8.22)':
+    optionalDependencies:
+      solid-js: 1.8.22
 
   acorn-jsx@5.3.2(acorn@8.12.1):
     dependencies:

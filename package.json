@@ -11,7 +11,7 @@
   },
   "main": "src/index.tsx",
   "dependencies": {
-    "@xstate/store": "link:../xstate/packages/xstate-store",
+    "@xstate/store": "^2.3.0",
     "solid-js": "^1.8.21",
     "ts-pattern": "^5.3.1"
   },
