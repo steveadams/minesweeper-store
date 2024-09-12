@@ -1,6 +1,6 @@
 import { createContext, ParentProps, useContext } from "solid-js";
-import { setupStore } from "./store";
-import { GameEvent, GameSnapshot, GameStore } from "./types";
+import { setupStore } from "../store/store";
+import { GameEvent, GameSnapshot, GameStore } from "../types";
 import { useSelector } from "@xstate/store/solid";
 import { EventFromStore, EventObject, EventPayloadMap } from "@xstate/store";
 
@@ -8,9 +8,9 @@ const StoreContext = createContext<GameStore | undefined>(undefined);
 
 export const StoreProvider = (props: ParentProps) => {
   const store = setupStore({
-    width: 10,
+    width: 15,
     height: 10,
-    mines: 10,
+    mines: 1,
   });
 
   return (
@@ -20,7 +20,6 @@ export const StoreProvider = (props: ParentProps) => {
   );
 };
 
-// Create a hook to use the store context
 export const useStore = () => {
   const store = useContext(StoreContext);
 

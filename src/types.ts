@@ -74,6 +74,7 @@ const cells = P.array(anyCell);
 const gameState = P.shape({
   config: configuration,
   cells: cells,
+  visitedCells: P.set(P.number),
   gameStatus: P.union("ready", "playing", "win", "game-over"),
   cellsRevealed: P.number,
   flagsLeft: P.number,
@@ -93,7 +94,7 @@ export type Configuration = P.infer<typeof configuration>;
 export type GameState = P.infer<typeof gameState>;
 
 export type GameEventMap = {
-  initialize: object;
+  initialize: { config: Configuration };
   startPlaying: object;
   win: object;
   gameOver: object;

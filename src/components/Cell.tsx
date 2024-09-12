@@ -1,27 +1,39 @@
-import { Accessor, Component, Match, Switch } from "solid-js";
+import {
+  Accessor,
+  Component,
+  createEffect,
+  createSignal,
+  Match,
+  Switch,
+} from "solid-js";
 import {
   type Cell,
+  coveredCell,
   coveredCellWithMine,
   coveredCellWithoutMine,
   flaggedCell,
   revealedCellWithMine,
   revealedClearCell,
 } from "../types";
-import { useStore, useStoreSelector } from "../StoreContext";
-import { selectPlayerIsRevealing } from "../selectors";
-import { isMatching } from "ts-pattern";
+import { useStore, useStoreSelector } from "./StoreContext";
+import { selectPlayerIsRevealing } from "../store/selectors";
+import { isMatching, match } from "ts-pattern";
 
 const baseCellStyle =
   "aspect-square size-10 rounded-sm text-white focus:outline-none focus:ring-2 focus:ring-offset-2 rounded-sm flex items-center justify-center pointer-events-auto";
 
-type CellComponent = Component<{
+type CellRootComponent = Component<{
   cell: Accessor<Cell>;
   index: number;
 }>;
 
-const CoveredCell: CellComponent = ({ cell, index }) => {
+type CellDisplayComponent = Component<{
+  cell: Cell;
+  index: number;
+}>;
+
+const CoveredCell: CellDisplayComponent = ({ index }) => {
   const store = useStore();
-  cell();
   const revealing = useStoreSelector(selectPlayerIsRevealing);
 
   const revealCell = () => {
@@ -61,17 +73,16 @@ const CoveredCell: CellComponent = ({ cell, index }) => {
   );
 };
 
-const RevealedCell: CellComponent = ({ cell }) => (
+const RevealedCell: CellDisplayComponent = ({ cell }) => (
   <button
     class={`${baseCellStyle} bg-slate-400 focus:ring-slate-500 dark:bg-slate-400`}
   >
-    {cell().adjacentMines > 0 ? cell().adjacentMines.toString() : ""}
+    {cell.adjacentMines > 0 ? cell.adjacentMines.toString() : ""}
   </button>
 );
 
-const FlaggedCell: CellComponent = ({ cell, index }) => {
+const FlaggedCell: CellDisplayComponent = ({ index }) => {
   const store = useStore();
-  cell();
 
   const toggleFlag = (e: MouseEvent) => {
     e.preventDefault();
@@ -88,9 +99,7 @@ const FlaggedCell: CellComponent = ({ cell, index }) => {
   );
 };
 
-const RevealedBomb: CellComponent = ({ cell }) => {
-  cell();
-
+const RevealedBomb: CellDisplayComponent = () => {
   return (
     <button
       class={`${baseCellStyle} bg-red-400 focus:ring-slate-500 dark:bg-red-600`}
@@ -100,22 +109,42 @@ const RevealedBomb: CellComponent = ({ cell }) => {
   );
 };
 
-export const CellButton: CellComponent = (props) => (
+// TODO: Figure out a way to get exhaustive matching in SolidJS :(
+// export const CellButton: CellRootComponent = ({ cell, index }) => {
+//   const [component, setComponent] = createSignal(CoveredCell);
+
+//   createEffect(() => {
+//     setComponent(() =>
+//       match(cell())
+//         .with(coveredCellWithMine, coveredCellWithoutMine, () => CoveredCell)
+//         .with(flaggedCell, () => FlaggedCell)
+//         .with(revealedClearCell, () => RevealedCell)
+//         .with(revealedCellWithMine, () => RevealedBomb)
+//         .exhaustive()
+//     );
+//   });
+
+//   const CellComponent = component();
+
+//   return <CellComponent cell={cell()} index={index} />;
+// };
+
+export const CellButton: CellRootComponent = ({ cell, index }) => (
   <Switch fallback={<div>Unknown cell</div>}>
-    <Match when={isMatching(coveredCellWithMine, props.cell())}>
-      <CoveredCell {...props} />
+    <Match when={isMatching(coveredCellWithMine, cell())} keyed>
+      <CoveredCell cell={cell()} index={index} />
     </Match>
-    <Match when={isMatching(coveredCellWithoutMine, props.cell())}>
-      <CoveredCell {...props} />
+    <Match when={isMatching(coveredCellWithoutMine, cell())} keyed>
+      <CoveredCell cell={cell()} index={index} />
     </Match>
-    <Match when={isMatching(flaggedCell, props.cell())}>
-      <FlaggedCell {...props} />
+    <Match when={isMatching(flaggedCell, cell())} keyed>
+      <FlaggedCell cell={cell()} index={index} />
     </Match>
-    <Match when={isMatching(revealedClearCell, props.cell())}>
-      <RevealedCell {...props} />
+    <Match when={isMatching(revealedClearCell, cell())} keyed>
+      <RevealedCell cell={cell()} index={index} />
     </Match>
-    <Match when={isMatching(revealedCellWithMine, props.cell())}>
-      <RevealedBomb {...props} />
+    <Match when={isMatching(revealedCellWithMine, cell())} keyed>
+      <RevealedBomb cell={cell()} index={index} />
     </Match>
   </Switch>
 );
