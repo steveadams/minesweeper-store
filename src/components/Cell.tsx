@@ -1,42 +1,39 @@
-import {
-  Accessor,
-  Component,
-  createEffect,
-  createSignal,
-  Match,
-  Switch,
-} from "solid-js";
+import { Accessor, Component, JSX, Match, Switch } from "solid-js";
 import {
   type Cell,
   coveredCell,
-  coveredCellWithMine,
-  coveredCellWithoutMine,
   flaggedCell,
   revealedCellWithMine,
   revealedClearCell,
 } from "../types";
 import { useStore, useStoreSelector } from "./StoreContext";
 import { selectPlayerIsRevealing } from "../store/selectors";
-import { isMatching, match } from "ts-pattern";
+import { isMatching } from "ts-pattern";
+
+interface BaseButtonProps extends JSX.ButtonHTMLAttributes<HTMLButtonElement> {
+  class?: string;
+}
+
+const BaseButton: Component<BaseButtonProps> = (props) => (
+  <button {...props} class={`${baseCellStyle} ${props.class || ""}`}>
+    {props.children}
+  </button>
+);
 
 const baseCellStyle =
   "aspect-square size-10 rounded-sm text-white focus:outline-none focus:ring-2 focus:ring-offset-2 rounded-sm flex items-center justify-center pointer-events-auto";
 
-type CellRootComponent = Component<{
+type CellComponent = Component<{
   cell: Accessor<Cell>;
   index: number;
 }>;
 
-type CellDisplayComponent = Component<{
-  cell: Cell;
-  index: number;
-}>;
-
-const CoveredCell: CellDisplayComponent = ({ index }) => {
+const CoveredCell: CellComponent = ({ index }) => {
   const store = useStore();
   const revealing = useStoreSelector(selectPlayerIsRevealing);
 
-  const revealCell = () => {
+  const revealCell = (e: MouseEvent) => {
+    e.preventDefault();
     store.send({ type: "revealCell", index });
   };
 
@@ -46,12 +43,14 @@ const CoveredCell: CellDisplayComponent = ({ index }) => {
   };
 
   const setRevealing = (e: MouseEvent) => {
+    e.preventDefault();
     if (e.button === 0) {
       store.send({ type: "setIsPlayerRevealing", to: true });
     }
   };
 
   const unsetRevealing = (e: MouseEvent) => {
+    e.preventDefault();
     if (e.button !== 0) {
       return;
     }
@@ -62,26 +61,24 @@ const CoveredCell: CellDisplayComponent = ({ index }) => {
   };
 
   return (
-    <button
-      class={`${baseCellStyle} bg-slate-900 hover:bg-slate-700 focus:ring-slate-400 dark:bg-slate-700 dark:hover:bg-slate-600`}
+    <BaseButton
+      class="bg-slate-900 hover:bg-slate-700 focus:ring-slate-400 dark:bg-slate-700 dark:hover:bg-slate-600"
       onClick={revealCell}
       onContextMenu={toggleFlag}
       onMouseLeave={unsetRevealing}
       onMouseDown={setRevealing}
       onMouseUp={unsetRevealing}
-    ></button>
+    ></BaseButton>
   );
 };
 
-const RevealedCell: CellDisplayComponent = ({ cell }) => (
-  <button
-    class={`${baseCellStyle} bg-slate-400 focus:ring-slate-500 dark:bg-slate-400`}
-  >
-    {cell.adjacentMines > 0 ? cell.adjacentMines.toString() : ""}
-  </button>
+const RevealedCell: CellComponent = ({ cell }) => (
+  <BaseButton class="bg-slate-400 focus:ring-slate-500 dark:bg-slate-400">
+    {cell().adjacentMines > 0 ? cell().adjacentMines.toString() : ""}
+  </BaseButton>
 );
 
-const FlaggedCell: CellDisplayComponent = ({ index }) => {
+const FlaggedCell: CellComponent = ({ index }) => {
   const store = useStore();
 
   const toggleFlag = (e: MouseEvent) => {
@@ -90,22 +87,20 @@ const FlaggedCell: CellDisplayComponent = ({ index }) => {
   };
 
   return (
-    <button
+    <BaseButton
       onContextMenu={toggleFlag}
-      class={`${baseCellStyle} bg-slate-900 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600`}
+      class="bg-slate-900 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600"
     >
-      🚩
-    </button>
+      🚩``
+    </BaseButton>
   );
 };
 
-const RevealedBomb: CellDisplayComponent = () => {
+const RevealedBomb: CellComponent = () => {
   return (
-    <button
-      class={`${baseCellStyle} bg-red-400 focus:ring-slate-500 dark:bg-red-600`}
-    >
+    <BaseButton class="bg-red-400 focus:ring-slate-500 dark:bg-red-600">
       💣
-    </button>
+    </BaseButton>
   );
 };
 
@@ -116,7 +111,7 @@ const RevealedBomb: CellDisplayComponent = () => {
 //   createEffect(() => {
 //     setComponent(() =>
 //       match(cell())
-//         .with(coveredCellWithMine, coveredCellWithoutMine, () => CoveredCell)
+//         .with(coveredCell, () => CoveredCell)
 //         .with(flaggedCell, () => FlaggedCell)
 //         .with(revealedClearCell, () => RevealedCell)
 //         .with(revealedCellWithMine, () => RevealedBomb)
@@ -129,22 +124,23 @@ const RevealedBomb: CellDisplayComponent = () => {
 //   return <CellComponent cell={cell()} index={index} />;
 // };
 
-export const CellButton: CellRootComponent = ({ cell, index }) => (
-  <Switch fallback={<div>Unknown cell</div>}>
-    <Match when={isMatching(coveredCellWithMine, cell())} keyed>
-      <CoveredCell cell={cell()} index={index} />
-    </Match>
-    <Match when={isMatching(coveredCellWithoutMine, cell())} keyed>
-      <CoveredCell cell={cell()} index={index} />
-    </Match>
-    <Match when={isMatching(flaggedCell, cell())} keyed>
-      <FlaggedCell cell={cell()} index={index} />
-    </Match>
-    <Match when={isMatching(revealedClearCell, cell())} keyed>
-      <RevealedCell cell={cell()} index={index} />
-    </Match>
-    <Match when={isMatching(revealedCellWithMine, cell())} keyed>
-      <RevealedBomb cell={cell()} index={index} />
-    </Match>
-  </Switch>
-);
+export const CellButton: CellComponent = (props) => {
+  const { cell } = props;
+
+  return (
+    <Switch fallback={<div>Unknown cell</div>}>
+      <Match when={isMatching(coveredCell, cell())} keyed>
+        <CoveredCell {...props} />
+      </Match>
+      <Match when={isMatching(flaggedCell, cell())} keyed>
+        <FlaggedCell {...props} />
+      </Match>
+      <Match when={isMatching(revealedClearCell, cell())} keyed>
+        <RevealedCell {...props} />
+      </Match>
+      <Match when={isMatching(revealedCellWithMine, cell())} keyed>
+        <RevealedBomb {...props} />
+      </Match>
+    </Switch>
+  );
+};

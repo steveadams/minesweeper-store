@@ -1,9 +1,4 @@
-import {
-  EventObject,
-  StoreAssigner,
-  StoreContext,
-  StorePropertyAssigner,
-} from "@xstate/store";
+import { EventObject, StoreAssigner, StoreContext } from "@xstate/store";
 import { GameState } from "../types";
 
 export type GuardCondition<
@@ -25,17 +20,11 @@ export type GuardCondition<
  */
 export const guard =
   <SC extends StoreContext, E extends EventObject>(
-    condition: GuardCondition<SC, E> | GuardCondition<SC, E>[],
+    condition: GuardCondition<SC, E>,
     assigner: StoreAssigner<SC, E>
   ): StoreAssigner<SC, E> =>
   (ctx, event) => {
-    // const result = condition(ctx, event);
-    let result = false;
-    if (Array.isArray(condition)) {
-      result = condition.every((c) => c(ctx, event));
-    } else {
-      result = condition(ctx, event);
-    }
+    const result = condition(ctx, event);
 
     if (!result) {
       console.warn(`Guard stopped ${event.type} event`);
