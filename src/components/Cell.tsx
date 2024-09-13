@@ -15,13 +15,15 @@ interface BaseButtonProps extends JSX.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const BaseButton: Component<BaseButtonProps> = (props) => (
-  <button {...props} class={`${baseCellStyle} ${props.class || ""}`}>
+  <button
+    {...props}
+    class={`flex aspect-square size-10 rounded-sm text-white focus:outline-none focus:ring-2 focus:ring-offset-2 items-center justify-center ${
+      props.class || ""
+    }`}
+  >
     {props.children}
   </button>
 );
-
-const baseCellStyle =
-  "aspect-square size-10 rounded-sm text-white focus:outline-none focus:ring-2 focus:ring-offset-2 rounded-sm flex items-center justify-center pointer-events-auto";
 
 type CellComponent = Component<{
   cell: Accessor<Cell>;
@@ -33,7 +35,6 @@ const CoveredCell: CellComponent = ({ index }) => {
   const revealing = useStoreSelector(selectPlayerIsRevealing);
 
   const revealCell = (e: MouseEvent) => {
-    e.preventDefault();
     console.log("reveal cell", index);
     store.send({ type: "revealCell", index });
   };
@@ -44,14 +45,12 @@ const CoveredCell: CellComponent = ({ index }) => {
   };
 
   const setRevealing = (e: MouseEvent) => {
-    e.preventDefault();
     if (e.button === 0) {
       store.send({ type: "setIsPlayerRevealing", to: true });
     }
   };
 
   const unsetRevealing = (e: MouseEvent) => {
-    e.preventDefault();
     if (e.button !== 0) {
       return;
     }
@@ -105,26 +104,9 @@ const RevealedBomb: CellComponent = () => {
   );
 };
 
-// TODO: Figure out a way to get exhaustive matching in SolidJS :(
-// export const CellButton: CellRootComponent = ({ cell, index }) => {
-//   const [component, setComponent] = createSignal(CoveredCell);
-
-//   createEffect(() => {
-//     setComponent(() =>
-//       match(cell())
-//         .with(coveredCell, () => CoveredCell)
-//         .with(flaggedCell, () => FlaggedCell)
-//         .with(revealedClearCell, () => RevealedCell)
-//         .with(revealedCellWithMine, () => RevealedBomb)
-//         .exhaustive()
-//     );
-//   });
-
-//   const CellComponent = component();
-
-//   return <CellComponent cell={cell()} index={index} />;
-// };
-
+// TODO: Think about implementing something exhaustive here.
+// I don't think it's possible with JSX. Worth a look for sure.
+// It isn't possible to use ts-pattern here unfortunately
 export const CellButton: CellComponent = (props) => {
   const { cell } = props;
 

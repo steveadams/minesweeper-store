@@ -53,7 +53,7 @@ export const GameInfo: Component = () => {
           {face()}
         </button>
       </div>
-      <div>{time()}</div>
+      <div>{time().toString().padStart(3, "0")}</div>
     </div>
   );
 };
