@@ -6,10 +6,26 @@ import { GameInfo } from "./GameInfo";
 import { Grid } from "./Grid";
 import { Configuration } from "../types";
 
-const presets: Record<string, Configuration> = {
-  beginner: { width: 5, height: 5, mines: 5 },
-  intermediate: { width: 15, height: 15, mines: 30 },
-  advanced: { width: 20, height: 20, mines: 100 },
+const presets: Record<"beginner" | "intermediate" | "advanced", Configuration> =
+  {
+    beginner: { width: 5, height: 5, mines: 5 },
+    intermediate: { width: 15, height: 15, mines: 30 },
+    advanced: { width: 20, height: 20, mines: 100 },
+  } as const;
+
+const PresetButton: Component<{ label: keyof typeof presets }> = ({
+  label,
+}) => {
+  const store = useStore();
+
+  const applyPreset = () =>
+    store.send({ type: "initialize", config: presets[label] });
+
+  return (
+    <button onClick={applyPreset} class="flex gap-x-2 items-center capitalize">
+      {label}
+    </button>
+  );
 };
 
 const CustomSettingField: Component<{
@@ -25,12 +41,14 @@ const CustomSettingField: Component<{
       </label>
       <div class="mt-2">
         <input
-          type="number"
+          class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 invalid:border-red-500 invalid:ring-red-500 invalid:outline-red-500 dark:invalid:border-red-500 dark:invalid:ring-red-500 dark:invalid:outline-red-500"
+          id={label}
           min="1"
+          max="50"
           name={label}
-          class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
           placeholder="10"
           required
+          type="number"
         />
       </div>
     </div>
@@ -49,15 +67,11 @@ export const Minesweeper: Component = () => {
     const form = e.currentTarget as HTMLFormElement;
     const formData = new FormData(form);
 
-    console.log("formData", formData);
-
     const config = {
       width: Number(formData.get("width")),
       height: Number(formData.get("height")),
       mines: Number(formData.get("mines")),
     };
-
-    console.log("config", config);
 
     store.send({ type: "initialize", config });
     closeDialog();
@@ -66,44 +80,17 @@ export const Minesweeper: Component = () => {
   return (
     <div>
       <h1 class="font-black mb-4">Minesweeper</h1>
-      <input type="text"></input>
+
       <nav class="rounded-md mx-auto p-2 mb-4">
         <ul class="flex gap-x-4 justify-center font-mono">
           <li>
-            <button
-              onClick={() =>
-                store.send({
-                  type: "initialize",
-                  config: presets.beginner,
-                })
-              }
-            >
-              Beginner
-            </button>
+            <PresetButton label="beginner" />
           </li>
           <li>
-            <button
-              onClick={() =>
-                store.send({
-                  type: "initialize",
-                  config: presets.intermediate,
-                })
-              }
-            >
-              Intermediate
-            </button>
+            <PresetButton label="intermediate" />
           </li>
           <li>
-            <button
-              onClick={() =>
-                store.send({
-                  type: "initialize",
-                  config: presets.advanced,
-                })
-              }
-            >
-              Advanced
-            </button>
+            <PresetButton label="advanced" />
           </li>
           <li>
             <button onClick={openDialog}>Custom</button>
@@ -144,7 +131,7 @@ export const Minesweeper: Component = () => {
                       <div class="mt-6 flex items-center justify-end gap-x-6">
                         <button
                           type="submit"
-                          class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                          class="rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
                         >
                           Start Game
                         </button>
