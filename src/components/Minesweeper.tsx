@@ -1,4 +1,4 @@
-import type { Component } from "solid-js";
+import type { Accessor, Component } from "solid-js";
 import { createSignal, For } from "solid-js";
 import { useStore } from "./StoreContext";
 import { GameInfo } from "./GameInfo";
@@ -45,7 +45,7 @@ const CustomSettingField: Component<{ label: string }> = ({ label }) => (
 );
 
 const CustomDialog: Component<{
-  isOpen: boolean;
+  isOpen: Accessor<boolean>;
   closeDialog: (event: MouseEvent) => void;
   submitForm: (config: Configuration) => void;
 }> = ({ closeDialog, isOpen, submitForm }) => {
@@ -62,7 +62,7 @@ const CustomDialog: Component<{
   };
 
   return (
-    <dialog open={isOpen}>
+    <dialog open={isOpen()}>
       <div
         class="fixed inset-0 bg-gray-500 transition-opacity bg-opacity-75"
         aria-hidden="true"
@@ -133,7 +133,7 @@ export const Minesweeper: Component = () => {
         </ul>
       </nav>
       <CustomDialog
-        isOpen={isDialogOpen()}
+        isOpen={isDialogOpen}
         closeDialog={() => setIsDialogOpen(false)}
         submitForm={(config) => {
           store.send({ type: "initialize", config });
