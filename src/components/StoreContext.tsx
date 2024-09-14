@@ -8,9 +8,9 @@ const StoreContext = createContext<GameStore | undefined>(undefined);
 
 export const StoreProvider = (props: ParentProps) => {
   const store = setupStore({
-    width: 15,
-    height: 10,
-    mines: 1,
+    width: 5,
+    height: 5,
+    mines: 5,
   });
 
   return (

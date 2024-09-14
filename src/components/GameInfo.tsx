@@ -34,7 +34,7 @@ export const GameInfo: Component = () => {
   });
 
   createEffect(() => {
-    if (gameIsOver() || gameIsWon()) {
+    if (gameIsOver() || gameIsWon() || !gameIsStarted()) {
       interval = resetInterval(interval);
     }
   });
