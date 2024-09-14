@@ -44,7 +44,7 @@ export const GameInfo: Component = () => {
   });
 
   return (
-    <div class="flex justify-between font-mono">
+    <div class="flex justify-between font-mono text-xl mb-4">
       <div>🚩 {flagsLeft()}</div>
       <div>
         <button

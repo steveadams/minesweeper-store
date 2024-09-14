@@ -48,17 +48,17 @@ function getValidNeighbourIndices(
 
   return neighbours
     .map(([dx, dy]) => {
-      const newX = x + dx;
-      const newY = y + dy;
-      if (newX >= 0 && newX < gridWidth && newY >= 0 && newY < gridHeight) {
-        return coordinatesToIndex(gridWidth, newX, newY);
+      const nextX = x + dx;
+      const nextY = y + dy;
+      if (nextX >= 0 && nextX < gridWidth && nextY >= 0 && nextY < gridHeight) {
+        return coordinatesToIndex(gridWidth, nextX, nextY);
       }
       return -1;
     })
     .filter((neighbourIndex) => neighbourIndex !== -1);
 }
 
-const createCells = (config: Configuration): Cells => {
+const createGrid = (config: Configuration): Cells => {
   const totalCells = config.width * config.height;
   const cells: Cell[] = new Array(totalCells).fill(null).map(() => ({
     mine: false,
@@ -132,7 +132,7 @@ const revealMines = (cells: Cells): Cells => {
 
 const configureStoreContext = (config: Configuration): GameState => ({
   config,
-  cells: createCells(config),
+  cells: createGrid(config),
   visitedCells: new Set<number>(),
   gameStatus: "ready",
   cellsRevealed: 0,
