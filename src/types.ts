@@ -93,14 +93,19 @@ export type Cells = P.infer<typeof cells>;
 export type Configuration = P.infer<typeof configuration>;
 export type GameState = P.infer<typeof gameState>;
 
+export type InitializeEvent = { config: Configuration };
+export type RevealCellEvent = { index: number };
+export type ToggleFlagEvent = { index: number };
+export type SetIsPlayerRevealingEvent = { to: boolean };
+
 export type GameEventMap = {
-  initialize: { config: Configuration };
+  initialize: InitializeEvent;
   startPlaying: object;
   win: object;
   gameOver: object;
-  revealCell: { index: number };
-  toggleFlag: { index: number };
-  setIsPlayerRevealing: { to: boolean };
+  revealCell: RevealCellEvent;
+  toggleFlag: ToggleFlagEvent;
+  setIsPlayerRevealing: SetIsPlayerRevealingEvent;
   tick: object;
 };
 
