@@ -17,6 +17,7 @@ const PresetButton: Component<{ label: string }> = ({ label }) => {
     <button
       onClick={() => store.send({ type: "initialize", config: presets[label] })}
       class="flex gap-x-2 items-center capitalize"
+      data-preset={label}
     >
       {label}
     </button>

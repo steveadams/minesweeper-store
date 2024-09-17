@@ -45,7 +45,7 @@ export const GameInfo: Component = () => {
 
   return (
     <div class="flex justify-between font-mono text-xl mb-4">
-      <div>🚩 {flagsLeft()}</div>
+      <div role="meter">🚩 {flagsLeft()}</div>
       <div id="game-status">
         <button
           onClick={() => store.send({ type: "initialize", config: config() })}
