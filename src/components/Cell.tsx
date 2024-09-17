@@ -63,12 +63,16 @@ const CoveredCell: CellComponent = ({ index }) => {
       onPointerLeave={unsetRevealing}
       onPointerDown={setRevealing}
       onPointerUp={unsetRevealing}
+      data-covered
     ></BaseButton>
   );
 };
 
 const RevealedCell: CellComponent = ({ cell }) => (
-  <BaseButton class="bg-slate-400 focus:ring-slate-500 dark:bg-slate-400">
+  <BaseButton
+    class="bg-slate-400 focus:ring-slate-500 dark:bg-slate-400"
+    data-revealed={cell().adjacentMines.toString()}
+  >
     {cell().adjacentMines > 0 ? cell().adjacentMines.toString() : ""}
   </BaseButton>
 );
@@ -85,6 +89,7 @@ const FlaggedCell: CellComponent = ({ index }) => {
     <BaseButton
       onContextMenu={toggleFlag}
       class="bg-slate-900 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600"
+      data-flagged
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -107,7 +112,10 @@ const FlaggedCell: CellComponent = ({ index }) => {
 
 const RevealedBomb: CellComponent = () => {
   return (
-    <BaseButton class="bg-red-400 focus:ring-slate-500 dark:bg-red-600">
+    <BaseButton
+      class="bg-red-400 focus:ring-slate-500 dark:bg-red-600"
+      data-mine
+    >
       💣
     </BaseButton>
   );

@@ -47,7 +47,7 @@ function expectNotToBeRevealed(store: GameStore, index: number[]) {
   }
 }
 
-function expectToBeRevealedWithAdjacentMines(
+function expectToBeRevealedWithAdjacentCount(
   store: GameStore,
   index: number[],
   adjacentMines: number
@@ -82,6 +82,11 @@ beforeEach(() => {
 });
 
 describe("flagging behaviour", () => {
+  it("should start with the correct number of flags", () => {
+    const ctx = store.getSnapshot().context;
+    expect(ctx.flagsLeft).toBe(ctx.config.mines);
+  });
+
   it("should flag and unflag a cell", () => {
     expectToBeUnflagged(store, [0]);
     toggleFlag(store, 0);
@@ -178,15 +183,15 @@ describe("reveal behaviour", () => {
 
     // We can make these assertions based on deterministic 'random' mine placement
     // Expect 0 adjacent mines
-    expectToBeRevealedWithAdjacentMines(
+    expectToBeRevealedWithAdjacentCount(
       store,
       [0, 1, 2, 3, 4, 8, 9, 13, 14],
       0
     );
     // Expect 1 adjacent mines
-    expectToBeRevealedWithAdjacentMines(store, [7, 12, 18, 19], 1);
+    expectToBeRevealedWithAdjacentCount(store, [7, 12, 18, 19], 1);
     // Expect 2 adjacent mines
-    expectToBeRevealedWithAdjacentMines(store, [5, 6, 17], 2);
+    expectToBeRevealedWithAdjacentCount(store, [5, 6, 17], 2);
 
     // These cells should not be revealed
     expectNotToBeRevealed(store, [10, 11, 15, 16, 20, 21, 22, 23, 24]);
@@ -194,7 +199,7 @@ describe("reveal behaviour", () => {
     revealCell(store, 24);
 
     // Expect 1 adjacent mine, causing neighbours not to be revealed
-    expectToBeRevealedWithAdjacentMines(store, [24], 1);
+    expectToBeRevealedWithAdjacentCount(store, [24], 1);
     expectNotToBeRevealed(store, [23]);
   });
 });

@@ -1,6 +1,7 @@
 import { createStore } from "@xstate/store";
 import { match } from "ts-pattern";
 import seedrandom from "seedrandom";
+seedrandom("minesweeper", { global: true });
 
 import {
   coveredCellWithMine,
