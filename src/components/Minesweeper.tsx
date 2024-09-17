@@ -1,22 +1,18 @@
 import type { Accessor, Component } from "solid-js";
-import { createSignal, For } from "solid-js";
+import { createMemo, createSignal } from "solid-js";
 import { useStore } from "./StoreContext";
 import { GameInfo } from "./GameInfo";
 import { Grid } from "./Grid";
 import { Configuration } from "../types";
 
-const presets: Record<string, Configuration> = {
-  beginner: { width: 5, height: 5, mines: 5 },
-  intermediate: { width: 15, height: 15, mines: 30 },
-  advanced: { width: 20, height: 20, mines: 100 },
-};
-
-const PresetButton: Component<{ label: string }> = ({ label }) => {
-  const store = useStore();
+const ConfigureGameButton: Component<{
+  label: string;
+  onClick: () => void;
+}> = ({ label, onClick }) => {
   return (
     <button
-      onClick={() => store.send({ type: "initialize", config: presets[label] })}
-      class="flex gap-x-2 items-center capitalize"
+      onClick={onClick}
+      class="relative inline-flex items-center rounded-l-md px-3 py-2 text-sm font-semibold bg-transparent text-gray-600 hover:text-gray-900 focus:z-10"
       data-preset={label}
     >
       {label}
@@ -24,23 +20,29 @@ const PresetButton: Component<{ label: string }> = ({ label }) => {
   );
 };
 
-const CustomSettingField: Component<{ label: string }> = ({ label }) => (
+const CustomSettingField: Component<{
+  name: string;
+  min: number;
+  max: Accessor<number>;
+  onChange?: (event: Event) => void;
+}> = ({ name, min, max, onChange }) => (
   <div>
     <label
-      for={label}
+      for={name}
       class="block text-sm font-medium leading-6 text-gray-900 capitalize"
     >
-      {label}
+      {name}
     </label>
     <input
-      id={label}
-      name={label}
+      id={name}
+      name={name}
+      min={min}
+      max={max()}
+      onChange={onChange}
       type="number"
-      min="1"
-      max="50"
       placeholder="10"
       required
-      class="mt-2 w-full p-2.5 text-sm rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+      class="mt-2 w-full p-2.5 text-sm rounded-lg border border-gray-300 focus:ring-red-500 focus:border-red-500"
     />
   </div>
 );
@@ -50,6 +52,11 @@ const CustomDialog: Component<{
   closeDialog: (event: MouseEvent) => void;
   submitForm: (config: Configuration) => void;
 }> = ({ closeDialog, isOpen, submitForm }) => {
+  const [width, setWidth] = createSignal(10);
+  const [height, setHeight] = createSignal(10);
+
+  const maximumMines = createMemo(() => width() * height() - 1);
+
   const handleSubmit = (e: Event) => {
     e.preventDefault();
     const form = e.currentTarget as HTMLFormElement;
@@ -60,6 +67,16 @@ const CustomDialog: Component<{
       mines: Number(formData.get("mines")),
     };
     submitForm(config);
+  };
+
+  const handleWidthChange = (e: Event) => {
+    const value = (e.target as HTMLInputElement).value;
+    setWidth(Number(value));
+  };
+
+  const handleHeightChange = (e: Event) => {
+    const value = (e.target as HTMLInputElement).value;
+    setHeight(Number(value));
   };
 
   return (
@@ -77,24 +94,28 @@ const CustomDialog: Component<{
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                fill="none"
                 viewBox="0 0 24 24"
-                stroke-width="1.5"
-                stroke="currentColor"
+                fill="currentColor"
                 class="size-6 hover:scale-110"
               >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M6 18 18 6M6 6l12 12"
-                />
+                <path d="M11.9997 10.5865L16.9495 5.63672L18.3637 7.05093L13.4139 12.0007L18.3637 16.9504L16.9495 18.3646L11.9997 13.4149L7.04996 18.3646L5.63574 16.9504L10.5855 12.0007L5.63574 7.05093L7.04996 5.63672L11.9997 10.5865Z"></path>
               </svg>
             </button>
             <form onSubmit={handleSubmit}>
               <div class="flex gap-8">
-                <CustomSettingField label="width" />
-                <CustomSettingField label="height" />
-                <CustomSettingField label="mines" />
+                <CustomSettingField
+                  name="width"
+                  min={2}
+                  max={() => 50}
+                  onChange={handleWidthChange}
+                />
+                <CustomSettingField
+                  name="height"
+                  min={2}
+                  max={() => 50}
+                  onChange={handleHeightChange}
+                />
+                <CustomSettingField name="mines" min={1} max={maximumMines} />
               </div>
               <div class="mt-6 flex items-center justify-end gap-x-6">
                 <button
@@ -117,22 +138,43 @@ export const Minesweeper: Component = () => {
   const [isDialogOpen, setIsDialogOpen] = createSignal(false);
 
   return (
-    <div>
+    <div class="mb-12">
       <h1 class="font-black mb-4">Minesweeper</h1>
-      <nav class="rounded-md mx-auto p-2 mb-4">
-        <ul class="flex gap-x-4 justify-center font-mono">
-          <For each={Object.keys(presets)}>
-            {(preset) => (
-              <li>
-                <PresetButton label={preset} />
-              </li>
-            )}
-          </For>
-          <li>
-            <button onClick={() => setIsDialogOpen(true)}>Custom</button>
-          </li>
-        </ul>
-      </nav>
+
+      <span class="isolate inline-flex rounded-md mx-auto my-8 ring-1 bg-white ring-inset ring-gray-300 overflow-hidden">
+        <ConfigureGameButton
+          label={"Beginner"}
+          onClick={() =>
+            store.send({
+              type: "initialize",
+              config: { width: 5, height: 5, mines: 5 },
+            })
+          }
+        />
+        <ConfigureGameButton
+          label={"Intermediate"}
+          onClick={() =>
+            store.send({
+              type: "initialize",
+              config: { width: 15, height: 15, mines: 25 },
+            })
+          }
+        />
+        <ConfigureGameButton
+          label={"Advanced"}
+          onClick={() =>
+            store.send({
+              type: "initialize",
+              config: { width: 20, height: 20, mines: 100 },
+            })
+          }
+        />
+        <ConfigureGameButton
+          label={"Custom"}
+          onClick={() => setIsDialogOpen(true)}
+        />
+      </span>
+
       <CustomDialog
         isOpen={isDialogOpen}
         closeDialog={() => setIsDialogOpen(false)}

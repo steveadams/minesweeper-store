@@ -10,7 +10,7 @@ import {
   selectTimeElapsed,
 } from "../store/selectors";
 
-const resetInterval = (interval: number) => {
+const resetInterval = (interval: number | undefined) => {
   clearInterval(interval);
   return (interval = undefined);
 };

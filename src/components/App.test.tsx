@@ -1,6 +1,14 @@
 import { fireEvent, render, screen } from "@solidjs/testing-library";
 import userEvent, { UserEvent } from "@testing-library/user-event";
-import { expect, beforeEach, vi, describe, it, afterEach } from "vitest";
+import {
+  expect,
+  beforeEach,
+  vi,
+  describe,
+  it,
+  afterEach,
+  assert,
+} from "vitest";
 import seedrandom from "seedrandom";
 
 import App from "./App";
@@ -13,7 +21,9 @@ function createUser() {
 }
 
 function getCell(index: number) {
-  return screen.getAllByRole("gridcell")[index];
+  const cell = screen.getAllByRole("gridcell")[index];
+  assert(cell, `Cell with index ${index} not found`);
+  return cell;
 }
 
 function getTimer() {
@@ -45,13 +55,13 @@ function expectCellsToBeRevealed(cellIndices: number[]) {
 
 function expectRevealedCellWithAdjacentCount(
   cellIndices: number[],
-  adjacentCount: number
+  adjacentCount: number,
 ) {
   cellIndices.forEach((index) => {
     const cell = getCell(index);
     expect(cell).toHaveAttribute("data-revealed", adjacentCount.toString());
     expect(cell).toHaveTextContent(
-      adjacentCount === 0 ? "" : adjacentCount.toString()
+      adjacentCount === 0 ? "" : adjacentCount.toString(),
     );
   });
 }
@@ -64,14 +74,14 @@ function expectCoveredCell(cellIndices: number[]) {
 }
 
 function expectCellType(
-  cell: HTMLElement,
+  cell: HTMLElement | undefined,
   type: "covered" | "flagged" | "revealed" | "mine",
-  value?: string
+  value?: string,
 ) {
   expect(cell).toHaveAttribute(`data-${type}`, value);
 }
 
-function expectFace(f: keyof typeof face) {
+function expectFace(f: (typeof face)[keyof typeof face]) {
   const status = getStatus();
   expect(status).toHaveTextContent(f);
 }
@@ -106,15 +116,16 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("minesweeper", () => {
+describe("game state interactions", () => {
   it("starts the game once a cell is revealed", async () => {
     const user = createUser();
     render(() => <App />);
 
     expectTimeToBe("000");
-    expectFace(face.okay);
+    expectFace(face["okay"]);
 
     const cell = getCell(0);
+
     await user.click(cell);
 
     await advanceTimersBy(1000);
@@ -127,9 +138,10 @@ describe("minesweeper", () => {
 
     // Game is not started
     expectTimeToBe("000");
-    expectFace(face.okay);
+    expectFace(face["okay"]);
 
     const cell = getCell(0);
+
     await user.pointer({ keys: "[MouseRight>]", target: cell });
     await user.pointer({ keys: "[/MouseRight]", target: cell });
 
@@ -146,11 +158,13 @@ describe("minesweeper", () => {
     render(() => <App />);
 
     expectTimeToBe("000");
-    expectFace(face.okay);
+    expectFace(face["okay"]);
 
-    await user.click(getCell(cellIndexWithMine));
+    const cell = getCell(cellIndexWithMine);
 
-    expectCellType(getCell(cellIndexWithMine), "mine");
+    await user.click(cell);
+
+    expectCellType(cell, "mine");
     expectFace(face.gameOver);
   });
 
@@ -158,19 +172,21 @@ describe("minesweeper", () => {
     const user = createUser();
     render(() => <App />);
 
-    await user.click(getCell(0));
+    const cell = getCell(0);
+
+    await user.click(cell);
 
     // Fast-forward time by 5000ms
     await advanceTimersBy(5000);
 
     // Check the timer display after time manipulation
     expectTimeToBe("005");
-    expectFace(face.okay);
+    expectFace(face["okay"]);
 
     // Fast-forward time by 5000ms
     await advanceTimersBy(5000);
     expectTimeToBe("010");
-    expectFace(face.okay);
+    expectFace(face["okay"]);
 
     // Fast-forward time by 990s (should end the game)
     await advanceTimersBy(990_000);
@@ -183,7 +199,7 @@ describe("minesweeper", () => {
     const user = createUser();
     render(() => <App />);
 
-    expectFace(face.okay);
+    expectFace(face["okay"]);
 
     const cell = getCell(0);
 
@@ -200,7 +216,7 @@ describe("minesweeper", () => {
 
     await advanceTimersBy(10);
 
-    expectFace(face.okay);
+    expectFace(face["okay"]);
   });
 
   it("doesn't show a worried face as a cell is being flagged", () => {
@@ -208,23 +224,27 @@ describe("minesweeper", () => {
 
     const cell = getCell(0);
 
-    expectFace(face.okay);
+    expectFace(face["okay"]);
 
     fireEvent.mouseDown(cell, { button: 2 });
-    expectFace(face.okay);
+    expectFace(face["okay"]);
 
     fireEvent.mouseUp(cell, { button: 2 });
-    expectFace(face.okay);
+    expectFace(face["okay"]);
 
     fireEvent.contextMenu(cell);
-    expectFace(face.okay);
+    expectFace(face["okay"]);
   });
+});
 
+describe("cell interaction behaviours", () => {
   it("reveals neighbouring cells with adjacent mines", async () => {
     const user = createUser();
     render(() => <App />);
 
-    await user.click(getCell(0));
+    const cell = getCell(0);
+
+    await user.click(cell);
 
     await advanceTimersBy(1000);
     expectCellsToBeRevealed([
@@ -257,7 +277,9 @@ describe("minesweeper", () => {
       22, 23, 24,
     ]);
   });
+});
 
+describe("game controls and settings", () => {
   it("resets the game when the face is clicked", async () => {
     const user = createUser();
     render(() => <App />);
@@ -290,9 +312,9 @@ describe("minesweeper", () => {
     const user = createUser();
     render(() => <App />);
 
-    const beginnerButton = screen.getByText("beginner");
-    const intermediateButton = screen.getByText("intermediate");
-    const advancedButton = screen.getByText("advanced");
+    const beginnerButton = screen.getByText("Beginner");
+    const intermediateButton = screen.getByText("Intermediate");
+    const advancedButton = screen.getByText("Advanced");
 
     expectGridDimensions(5, 5);
 
@@ -307,5 +329,37 @@ describe("minesweeper", () => {
     await user.click(advancedButton);
     await advanceTimersBy(10);
     expectGridDimensions(20, 20);
+  });
+
+  it("can initialize custom game settings", async () => {
+    const user = createUser();
+    render(() => <App />);
+
+    const customButton = screen.getByText("Custom");
+
+    expectGridDimensions(5, 5);
+
+    await user.click(customButton);
+    await advanceTimersBy(10);
+
+    expect(screen.queryByRole("dialog")).toBeInTheDocument();
+
+    const widthInput = screen.getByLabelText("width");
+    const heightInput = screen.getByLabelText("height");
+    const minesInput = screen.getByLabelText("mines");
+
+    expect(widthInput).toHaveValue(null);
+    expect(heightInput).toHaveValue(null);
+    expect(minesInput).toHaveValue(null);
+
+    await user.type(widthInput, "10");
+    await user.type(heightInput, "10");
+    await user.type(minesInput, "10");
+    await user.click(screen.getByText("Start Game"));
+
+    await advanceTimersBy(10);
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expectGridDimensions(10, 10);
   });
 });

@@ -36,8 +36,8 @@ export const selectFace = (s: GameSnapshot) =>
     .with(
       { gameStatus: "playing", playerIsRevealingCell: true },
       { gameStatus: "ready", playerIsRevealingCell: true },
-      () => face.scared
+      () => face["scared"],
     )
-    .with({ gameStatus: "win" }, () => face.win)
-    .with({ gameStatus: "game-over" }, () => face.gameOver)
-    .otherwise(() => face.okay);
+    .with({ gameStatus: "win" }, () => face["win"])
+    .with({ gameStatus: "game-over" }, () => face["gameOver"])
+    .otherwise(() => face["okay"]);

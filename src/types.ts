@@ -60,7 +60,7 @@ export const anyCell = P.union(
   coveredCellWithoutMine,
   flaggedCell,
   revealedClearCell,
-  revealedCellWithMine
+  revealedCellWithMine,
 );
 
 const configuration = P.shape({
@@ -99,7 +99,7 @@ export type ToggleFlagEvent = { index: number };
 export type SetIsPlayerRevealingEvent = { to: boolean };
 
 // TODO: Make this type-safe
-export const face: Record<string, string> = {
+export const face: Record<"okay" | "scared" | "win" | "gameOver", string> = {
   okay: "🙂",
   scared: "😬",
   win: "😀",
@@ -117,7 +117,15 @@ export type GameEventMap = {
   tick: object;
 };
 
+export type Emitted =
+  | {
+      type: "game-over";
+    }
+  | {
+      type: "win";
+    };
+
 export type GameEvent = ExtractEventsFromPayloadMap<GameEventMap>;
 // TODO: Improve TEmitted type
-export type GameStore = Store<GameState, GameEvent, any>;
+export type GameStore = Store<GameState, GameEvent, Emitted>;
 export type GameSnapshot = SnapshotFromStore<GameStore>;

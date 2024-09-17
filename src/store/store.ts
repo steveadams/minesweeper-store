@@ -10,13 +10,14 @@ import {
   type Configuration,
   type GameEventMap,
   type Cells,
+  type Emitted,
   type GameState,
   type GameStore,
-  RevealedCell,
-  RevealCellEvent,
-  ToggleFlagEvent,
+  type RevealedCell,
+  type ToggleFlagEvent,
+  type RevealCellEvent,
+  CoveredCell,
 } from "../types";
-import { gameIsNotOver, guard } from "./guard";
 
 // Convert (x, y) coordinates to an index for a 1D array
 export function coordinatesToIndex(gridWidth: number, x: number, y: number) {
@@ -33,7 +34,7 @@ export function indexToCoordinates(gridWidth: number, index: number) {
 function getValidNeighbourIndices(
   gridWidth: number,
   gridHeight: number,
-  index: number
+  index: number,
 ): number[] {
   const { x, y } = indexToCoordinates(gridWidth, index);
 
@@ -46,7 +47,7 @@ function getValidNeighbourIndices(
     [1, -1],
     [1, 0],
     [1, 1],
-  ];
+  ] as const;
 
   return neighbours
     .map(([dx, dy]) => {
@@ -98,7 +99,7 @@ function createGrid(config: Configuration): Cells {
   const mineIndices = getMineIndices(config);
 
   for (const idx of mineIndices) {
-    cells[idx] = { ...cells[idx], mine: true };
+    cells[idx] = { ...cells[idx], mine: true } as CoveredCell;
   }
 
   // Calculate adjacent mines for each cell
@@ -113,14 +114,14 @@ function createGrid(config: Configuration): Cells {
 
       const cell = cells[idx];
 
-      if (!cell.mine) {
+      if (cell && !cell.mine) {
         const adjacentMines = getValidNeighbourIndices(
           config.width,
           config.height,
-          idx
+          idx,
         ).reduce(
           (count, innerIdx) => count + (cells[innerIdx]!.mine ? 1 : 0),
-          0
+          0,
         );
 
         cells[idx] = { ...cell, adjacentMines };
@@ -133,9 +134,18 @@ function createGrid(config: Configuration): Cells {
 
 function toggleFlagLogic(
   ctx: GameState,
-  { index }: ToggleFlagEvent
+  { index }: ToggleFlagEvent,
 ): { flagsLeft: number; cells: Cells; gameStatus: GameState["gameStatus"] } {
+  if (!playerCanInteract(ctx)) {
+    return ctx;
+  }
+
   const cell = ctx.cells[index];
+
+  if (!cell) {
+    return ctx;
+  }
+
   const flagDelta = cell.flagged ? 1 : -1;
   const updatedCells = [...ctx.cells];
 
@@ -156,7 +166,16 @@ function toggleFlagLogic(
   };
 }
 
+function playerCanInteract(ctx: GameState) {
+  return ctx.gameStatus !== "game-over" && ctx.gameStatus !== "win";
+}
+
 function revealCellLogic(ctx: GameState, event: RevealCellEvent) {
+  if (!playerCanInteract(ctx)) {
+    console.log("Reveal cell not allowed");
+    return ctx;
+  }
+
   const cell = ctx.cells[event.index];
   let cellsRevealed = 0;
 
@@ -164,14 +183,22 @@ function revealCellLogic(ctx: GameState, event: RevealCellEvent) {
     .with(coveredCellWithoutMine, () => {
       const updatedCells = [...ctx.cells];
       const visitedCells = new Set<number>(ctx.visitedCells);
-      const stack = [event.index];
+      const stack: number[] = [event.index];
 
-      while (stack.length) {
+      while (stack.length > 0) {
         const idx = stack.pop();
+
+        if (idx === undefined) {
+          continue;
+        }
+
         const cell = updatedCells[idx];
 
+        if (!cell) {
+          continue;
+        }
+
         if (visitedCells.has(idx) || cell.flagged) {
-          // Skip already visited or flagged cells
           continue;
         }
 
@@ -186,11 +213,17 @@ function revealCellLogic(ctx: GameState, event: RevealCellEvent) {
           const neighbors = getValidNeighbourIndices(
             ctx.config.width,
             ctx.config.height,
-            idx
+            idx,
           );
 
           neighbors.forEach((neighbourIdx) => {
             const neighbourCell = updatedCells[neighbourIdx];
+
+            if (!neighbourCell) {
+              console.log("Neighbor cell not found");
+              return;
+            }
+
             // Add neighbors to the stack if they haven't been visited or flagged
             if (!visitedCells.has(neighbourIdx) && !neighbourCell.flagged) {
               stack.push(neighbourIdx);
@@ -212,13 +245,13 @@ function revealCellLogic(ctx: GameState, event: RevealCellEvent) {
       };
     })
     .with(coveredCellWithMine, () => ({
-      cells: revealMinesLogic(ctx.cells),
+      cells: revealMines(ctx.cells),
       gameStatus: "game-over",
     }))
-    .otherwise((c) => ({}));
+    .otherwise(() => ({}));
 }
 
-function revealMinesLogic(cells: Cells): Cells {
+function revealMines(cells: Cells): Cells {
   const updatedCells = [...cells];
 
   updatedCells.forEach((cell, index) => {
@@ -232,16 +265,6 @@ function revealMinesLogic(cells: Cells): Cells {
   });
 
   return updatedCells;
-}
-
-function gameOverLogic(ctx: GameState): {
-  gameStatus: "game-over";
-  cells: Cells;
-} {
-  return {
-    gameStatus: "game-over",
-    cells: revealMinesLogic(ctx.cells),
-  };
 }
 
 // Increment the time elapsed and return the new state
@@ -270,16 +293,29 @@ function configureStoreContext(config: Configuration): GameState {
 }
 
 export function setupStore(config: Configuration): GameStore {
-  return createStore<GameState, GameEventMap>(configureStoreContext(config), {
-    initialize: (_, event) => configureStoreContext(event.config),
-    startPlaying: { gameStatus: "playing" },
-    win: { gameStatus: "win" },
-    gameOver: gameOverLogic,
-    revealCell: guard(gameIsNotOver, revealCellLogic),
-    toggleFlag: guard(gameIsNotOver, toggleFlagLogic),
-    setIsPlayerRevealing: guard(gameIsNotOver, (_, event) => ({
-      playerIsRevealingCell: event.to,
-    })),
-    tick: tickLogic,
+  return createStore<GameState, GameEventMap, { emitted: Emitted }>({
+    types: {} as { emitted: Emitted },
+    context: configureStoreContext(config),
+    on: {
+      initialize: (_, event) => configureStoreContext(event.config),
+      startPlaying: { gameStatus: "playing" },
+      win: { gameStatus: "win" },
+      gameOver: (ctx) => ({
+        gameStatus: "game-over",
+        cells: revealMines(ctx.cells),
+      }),
+      revealCell: revealCellLogic,
+      toggleFlag: toggleFlagLogic,
+      setIsPlayerRevealing: (ctx, event) => {
+        if (!playerCanInteract(ctx)) {
+          return ctx;
+        }
+
+        return {
+          playerIsRevealingCell: event.to,
+        };
+      },
+      tick: tickLogic,
+    },
   });
 }

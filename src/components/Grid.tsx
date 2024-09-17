@@ -10,7 +10,7 @@ export const Grid: Component = () => {
   return (
     <div class="flex justify-center">
       <div
-        class="grid gap-1 max-w-fit"
+        class="grid gap-1 min-w-min"
         style={`grid-template-columns: repeat(${width()}, 1fr);`}
         role="grid"
       >
