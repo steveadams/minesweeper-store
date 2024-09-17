@@ -1,9 +1,19 @@
-// vitest.config.ts
 import { defineConfig } from "vitest/config";
+import solid from "vite-plugin-solid";
 
 export default defineConfig({
+  plugins: [solid()],
   test: {
-    includeSource: ["src/**/*.{js,ts}"],
+    environment: "jsdom",
+    globals: true,
+    testTransformMode: {
+      web: ["ts", "tsx"],
+    },
+    server: {
+      deps: {
+        inline: ["@xstate/store"],
+      },
+    },
   },
   define: {
     "import.meta.vitest": "undefined",

@@ -1,9 +1,9 @@
 import { defineConfig } from "vite";
-import solidPlugin from "vite-plugin-solid";
+import solid from "vite-plugin-solid";
 import devtools from "solid-devtools/vite";
 
 export default defineConfig({
-  plugins: [devtools({ autoname: true }), solidPlugin()],
+  plugins: [devtools({ autoname: true }), solid()],
   server: {
     port: 3000,
   },

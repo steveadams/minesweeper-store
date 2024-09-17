@@ -20,6 +20,7 @@ const BaseButton: Component<BaseButtonProps> = (props) => (
     class={`flex aspect-square size-10 rounded-sm text-white focus:outline-none focus:ring-2 focus:ring-offset-2 items-center justify-center ${
       props.class || ""
     }`}
+    role="gridcell"
   >
     {props.children}
   </button>
@@ -34,10 +35,8 @@ const CoveredCell: CellComponent = ({ index }) => {
   const store = useStore();
   const revealing = useStoreSelector(selectPlayerIsRevealing);
 
-  const revealCell = (e: MouseEvent) => {
-    console.log("reveal cell", index);
+  const revealCell = (e: MouseEvent) =>
     store.send({ type: "revealCell", index });
-  };
 
   const toggleFlag = (e: MouseEvent) => {
     e.preventDefault();
@@ -51,11 +50,7 @@ const CoveredCell: CellComponent = ({ index }) => {
   };
 
   const unsetRevealing = (e: MouseEvent) => {
-    if (e.button !== 0) {
-      return;
-    }
-
-    if (revealing()) {
+    if (e.button === 0 && revealing()) {
       store.send({ type: "setIsPlayerRevealing", to: false });
     }
   };
@@ -98,6 +93,7 @@ const FlaggedCell: CellComponent = ({ index }) => {
         stroke-width="1.5"
         stroke="currentColor"
         class="size-6 stroke-red-600 fill-red-500"
+        role="img"
       >
         <path
           stroke-linecap="round"

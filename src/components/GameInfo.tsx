@@ -46,14 +46,17 @@ export const GameInfo: Component = () => {
   return (
     <div class="flex justify-between font-mono text-xl mb-4">
       <div>🚩 {flagsLeft()}</div>
-      <div>
+      <div id="game-status">
         <button
           onClick={() => store.send({ type: "initialize", config: config() })}
+          role="status"
         >
           {face()}
         </button>
       </div>
-      <div>{time().toString().padStart(3, "0")}</div>
+      <time role="timer" datetime={`PT${time().toString()}S`}>
+        {time().toString().padStart(3, "0")}
+      </time>
     </div>
   );
 };

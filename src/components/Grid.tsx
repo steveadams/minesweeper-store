@@ -12,6 +12,7 @@ export const Grid: Component = () => {
       <div
         class="grid gap-1 max-w-fit"
         style={`grid-template-columns: repeat(${width()}, 1fr);`}
+        role="grid"
       >
         <Index each={cells()}>
           {(cell, index) => <CellButton cell={cell} index={index} />}

@@ -24,13 +24,20 @@ export const selectGameIsWon = (s: GameSnapshot) => {
 
 export const selectConfig = (s: GameSnapshot) => s.context.config;
 
+export const face: Record<string, string> = {
+  okay: "🙂",
+  scared: "😬",
+  win: "😀",
+  gameOver: "😵",
+};
+
 export const selectFace = (s: GameSnapshot) =>
   match(s.context as GameState)
     .with(
       { gameStatus: "playing", playerIsRevealingCell: true },
       { gameStatus: "ready", playerIsRevealingCell: true },
-      () => "😬"
+      () => face.scared
     )
-    .with({ gameStatus: "win" }, () => "😀")
-    .with({ gameStatus: "game-over" }, () => "😵")
-    .otherwise(() => "🙂");
+    .with({ gameStatus: "win" }, () => face.win)
+    .with({ gameStatus: "game-over" }, () => face.gameOver)
+    .otherwise(() => face.okay);

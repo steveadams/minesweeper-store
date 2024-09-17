@@ -2,8 +2,6 @@ import { createStore } from "@xstate/store";
 import { match } from "ts-pattern";
 import seedrandom from "seedrandom";
 
-seedrandom("minesweeper", { global: true });
-
 import {
   coveredCellWithMine,
   coveredCellWithoutMine,
@@ -29,10 +27,6 @@ export function indexToCoordinates(gridWidth: number, index: number) {
   const y = Math.floor(index / gridWidth);
   const x = index % gridWidth;
   return { x, y };
-}
-
-function randomIndex(length: number) {
-  return Math.floor(Math.random() * length);
 }
 
 function getValidNeighbourIndices(
@@ -74,8 +68,8 @@ function getMineIndices(config: Configuration) {
   const mineIndices = new Set<number>();
 
   while (mines > mineIndices.size) {
-    const row = randomIndex(gridHeight);
-    const col = randomIndex(gridWidth);
+    const row = Math.floor(Math.random() * gridHeight);
+    const col = Math.floor(Math.random() * gridWidth);
     const idx = coordinatesToIndex(gridWidth, col, row);
 
     if (idx >= totalCells || idx < 0) {
@@ -139,7 +133,7 @@ function createGrid(config: Configuration): Cells {
 function toggleFlagLogic(
   ctx: GameState,
   { index }: ToggleFlagEvent
-): { flagsLeft: number; cells: Cells } {
+): { flagsLeft: number; cells: Cells; gameStatus: GameState["gameStatus"] } {
   const cell = ctx.cells[index];
   const flagDelta = cell.flagged ? 1 : -1;
   const updatedCells = [...ctx.cells];
@@ -157,6 +151,7 @@ function toggleFlagLogic(
   return {
     flagsLeft: ctx.flagsLeft + flagDelta,
     cells: updatedCells,
+    gameStatus: ctx.gameStatus === "ready" ? "playing" : ctx.gameStatus,
   };
 }
 
@@ -248,6 +243,18 @@ function gameOverLogic(ctx: GameState): {
   };
 }
 
+// Increment the time elapsed and return the new state
+// Trigger game over if the game has been running for 999 seconds
+function tickLogic({
+  timeElapsed,
+}: GameState): Pick<GameState, "timeElapsed" | "gameStatus"> {
+  const nextTick = timeElapsed + 1;
+  return {
+    timeElapsed: nextTick,
+    gameStatus: nextTick < 999 ? "playing" : "game-over",
+  };
+}
+
 function configureStoreContext(config: Configuration): GameState {
   return {
     config,
@@ -272,180 +279,6 @@ export function setupStore(config: Configuration): GameStore {
     setIsPlayerRevealing: guard(gameIsNotOver, (_, event) => ({
       playerIsRevealingCell: event.to,
     })),
-    tick: ({ timeElapsed }) => ({ timeElapsed: timeElapsed + 1 }),
-  });
-}
-
-if (import.meta.vitest) {
-  const testGameConfig = { width: 5, height: 5, mines: 5 };
-  function create5x5x5Game(): [store: GameStore, mineIndices: Set<number>] {
-    return [setupStore(testGameConfig), getMineIndices(testGameConfig)];
-  }
-
-  function getCell(store: GameStore, index: number) {
-    return store.getSnapshot().context.cells[index];
-  }
-
-  function expectToBeRevealed(store: GameStore, index: number[]) {
-    for (const idx of index) {
-      expect(getCell(store, idx).revealed).toBe(true);
-    }
-  }
-
-  function expectToBeFlagged(store: GameStore, index: number[]) {
-    for (const idx of index) {
-      expect(getCell(store, idx).flagged).toBe(true);
-    }
-  }
-
-  function expectToBeUnflagged(store: GameStore, index: number[]) {
-    for (const idx of index) {
-      expect(getCell(store, idx).flagged).toBe(false);
-    }
-  }
-
-  function expectNotToBeRevealed(store: GameStore, index: number[]) {
-    for (const idx of index) {
-      console.log(idx, getCell(store, idx).revealed);
-      expect(getCell(store, idx).revealed).toBe(false);
-    }
-  }
-
-  function expectToBeRevealedWithAdjacentMines(
-    store: GameStore,
-    index: number[],
-    adjacentMines: number
-  ) {
-    for (const idx of index) {
-      expectToBeRevealed(store, [idx]);
-      expect(getCell(store, idx).adjacentMines).toBe(adjacentMines);
-    }
-  }
-
-  const { beforeEach, describe, it, expect } = import.meta.vitest;
-  let store: GameStore;
-  let mineIndices: Set<number>;
-  let safeIndices: Set<number>;
-
-  // Safe indices should match this set:
-  // Set(20) { 2, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 22, 23, 24, 25 }
-
-  beforeEach(() => {
-    // Make Math.random() deterministic in order to predict where mines are placed
-    seedrandom("minesweeper", { global: true });
-
-    [store, mineIndices] = create5x5x5Game();
-    safeIndices = new Set(
-      Array.from(
-        { length: testGameConfig.width * testGameConfig.height },
-        (_, i) => i + 1
-      ).filter((idx) => !mineIndices.has(idx))
-    );
-  });
-
-  describe("flagging behaviour", () => {
-    it("should flag and unflag a cell", () => {
-      expect(getCell(store, 0).flagged).toBe(false);
-      store.send({ type: "toggleFlag", index: 0 });
-      expect(getCell(store, 0).flagged).toBe(true);
-      store.send({ type: "toggleFlag", index: 0 });
-      expect(getCell(store, 0).flagged).toBe(false);
-    });
-
-    it("should not reveal a cell if it is flagged", () => {
-      expect(getCell(store, 0).revealed).toBe(false);
-      expect(getCell(store, 0).flagged).toBe(false);
-      store.send({ type: "toggleFlag", index: 0 });
-      expect(getCell(store, 0).flagged).toBe(true);
-      store.send({ type: "revealCell", index: 0 });
-      expect(getCell(store, 0).flagged).toBe(true);
-      expect(getCell(store, 0).revealed).toBe(false);
-    });
-
-    it("should not place more flags than are available", () => {
-      expect(store.getSnapshot().context.flagsLeft).toBe(5);
-      store.send({ type: "toggleFlag", index: 0 });
-      expect(store.getSnapshot().context.flagsLeft).toBe(4);
-      store.send({ type: "toggleFlag", index: 1 });
-      expect(store.getSnapshot().context.flagsLeft).toBe(3);
-      store.send({ type: "toggleFlag", index: 2 });
-      expect(store.getSnapshot().context.flagsLeft).toBe(2);
-      store.send({ type: "toggleFlag", index: 3 });
-      expect(store.getSnapshot().context.flagsLeft).toBe(1);
-      store.send({ type: "toggleFlag", index: 4 });
-      expect(store.getSnapshot().context.flagsLeft).toBe(0);
-      store.send({ type: "toggleFlag", index: 5 });
-      expect(store.getSnapshot().context.flagsLeft).toBe(0);
-      store.send({ type: "toggleFlag", index: 5 });
-      expect(store.getSnapshot().context.flagsLeft).toBe(0);
-
-      expectToBeFlagged(store, [0, 1, 2, 3, 4]);
-      expectToBeUnflagged(store, [5]);
-    });
-
-    it("should return flags to the pool when removed from the grid", () => {
-      expect(store.getSnapshot().context.flagsLeft).toBe(5);
-      store.send({ type: "toggleFlag", index: 0 });
-      expect(store.getSnapshot().context.flagsLeft).toBe(4);
-      store.send({ type: "toggleFlag", index: 1 });
-      expect(store.getSnapshot().context.flagsLeft).toBe(3);
-      store.send({ type: "toggleFlag", index: 2 });
-      expect(store.getSnapshot().context.flagsLeft).toBe(2);
-      store.send({ type: "toggleFlag", index: 3 });
-      expect(store.getSnapshot().context.flagsLeft).toBe(1);
-      store.send({ type: "toggleFlag", index: 4 });
-      expect(store.getSnapshot().context.flagsLeft).toBe(0);
-      expectToBeFlagged(store, [0, 1, 2, 3, 4]);
-      store.send({ type: "toggleFlag", index: 4 });
-      expect(store.getSnapshot().context.flagsLeft).toBe(1);
-      store.send({ type: "toggleFlag", index: 3 });
-      expect(store.getSnapshot().context.flagsLeft).toBe(2);
-
-      expectToBeFlagged(store, [0, 1, 2]);
-      expectToBeUnflagged(store, [3, 4, 5]);
-    });
-
-    it("should not reveal a cell if it is flagged", () => {
-      expect(getCell(store, 0).revealed).toBe(false);
-      expect(getCell(store, 0).flagged).toBe(false);
-
-      store.send({ type: "toggleFlag", index: 0 });
-      expect(getCell(store, 0).revealed).toBe(false);
-      expect(getCell(store, 0).flagged).toBe(true);
-
-      store.send({ type: "revealCell", index: 0 });
-      expect(getCell(store, 0).revealed).toBe(false);
-      expect(getCell(store, 0).flagged).toBe(true);
-    });
-  });
-
-  describe("reveal behaviour", () => {
-    it("should reveal a cell", () => {
-      expect(getCell(store, 0).revealed).toBe(false);
-      store.send({ type: "revealCell", index: 0 });
-
-      expectToBeRevealedWithAdjacentMines(
-        store,
-        [0, 1, 2, 3, 4, 8, 9, 13, 14],
-        0
-      );
-      expectToBeRevealedWithAdjacentMines(store, [7, 12, 18, 19], 1);
-      expectToBeRevealedWithAdjacentMines(store, [5, 6, 17], 2);
-      expectNotToBeRevealed(store, [10, 11, 15, 16, 20, 21, 22, 23, 24]);
-
-      store.send({ type: "revealCell", index: 24 });
-
-      expectToBeRevealedWithAdjacentMines(store, [24], 1);
-      expectNotToBeRevealed(store, [23]);
-    });
-
-    it("should reveal neighboring cells with no mines", () => {
-      const safeIndex = 0;
-      console.log(safeIndices);
-
-      expect(getCell(store, 0).revealed).toBe(false);
-      store.send({ type: "revealCell", index: safeIndex });
-      expect(getCell(store, 0).revealed).toBe(true);
-    });
+    tick: tickLogic,
   });
 }

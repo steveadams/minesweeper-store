@@ -98,6 +98,14 @@ export type RevealCellEvent = { index: number };
 export type ToggleFlagEvent = { index: number };
 export type SetIsPlayerRevealingEvent = { to: boolean };
 
+// TODO: Make this type-safe
+export const face: Record<string, string> = {
+  okay: "🙂",
+  scared: "😬",
+  win: "😀",
+  gameOver: "😵",
+} as const;
+
 export type GameEventMap = {
   initialize: InitializeEvent;
   startPlaying: object;
@@ -110,5 +118,6 @@ export type GameEventMap = {
 };
 
 export type GameEvent = ExtractEventsFromPayloadMap<GameEventMap>;
-export type GameStore = Store<GameState, GameEvent>;
+// TODO: Improve TEmitted type
+export type GameStore = Store<GameState, GameEvent, any>;
 export type GameSnapshot = SnapshotFromStore<GameStore>;

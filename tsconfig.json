@@ -9,6 +9,6 @@
     "jsxImportSource": "solid-js",
     "noEmit": true,
     "isolatedModules": true,
-    "types": ["vite/client", "vitest/importMeta"],
+    "types": ["vite/client", "vitest/importMeta", "@testing-library/jest-dom"],
   }
 }
