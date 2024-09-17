@@ -54,25 +54,51 @@ describe("minesweeper", () => {
     const timer = getTimer();
     const status = getStatus();
 
+    // Game is not started
     expect(timer).toHaveTextContent("000");
     expect(status).toHaveTextContent(face.okay);
 
     await user.pointer({ keys: "[MouseRight]", target: cell });
     await user.pointer({ keys: "[MouseRight>]", target: cell });
 
+    // Covered cell is replaced with a flagged cell
     const updatedCell = getCell(0);
-    const updatedTimer = getTimer();
     expect(updatedCell).toContainElement(screen.getByRole("img"));
 
-    vi.advanceTimersByTime(1500);
+    vi.advanceTimersByTime(1100);
 
-    expect(updatedTimer).toHaveTextContent("001");
+    // Timer should have advanced
+    expect(timer).toHaveTextContent("001");
 
     // Restore real timers to prevent side effects
     vi.useRealTimers();
   });
 
-  it("should track time and eventually end the game", async () => {
+  it("ends the game once a mine is revealed", async () => {
+    const cellWithMineIndex = 10;
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime }); // Sync user events with fake timers
+    render(() => <App />);
+
+    const cell = getCell(cellWithMineIndex);
+    const timer = getTimer();
+    const status = getStatus();
+
+    // Game is not started
+    expect(timer).toHaveTextContent("000");
+    expect(status).toHaveTextContent(face.okay);
+
+    await user.click(cell);
+
+    // Covered cell is replaced with a flagged cell
+    const updatedCell = getCell(cellWithMineIndex);
+    expect(updatedCell).toHaveTextContent("💣");
+
+    expect(status).toHaveTextContent(face.gameOver);
+    // Restore real timers to prevent side effects
+    vi.useRealTimers();
+  });
+
+  it("should track time and end the game at 999 seconds", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime }); // Sync user events with fake timers
     render(() => <App />);
 
@@ -103,5 +129,25 @@ describe("minesweeper", () => {
 
     // Restore real timers to prevent side effects
     vi.useRealTimers();
+  });
+
+  it("shows a worried face as a cell is being revealed", async () => {
+    const user = userEvent.setup();
+    render(() => <App />);
+
+    const cell = getCell(0);
+    const status = getStatus();
+    console.log(status.innerHTML);
+
+    await user.pointer({ keys: "[MouseLeft>]", target: cell });
+
+    const newStatus = getStatus();
+    console.log(newStatus.innerHTML);
+
+    // await screen.findByText(face.scared);
+
+    // user.pointer({ keys: "[/MouseLeft]", target: cell });
+
+    // await screen.findByText(face.okay);
   });
 });

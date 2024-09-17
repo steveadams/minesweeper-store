@@ -60,9 +60,9 @@ const CoveredCell: CellComponent = ({ index }) => {
       class="bg-slate-900 hover:bg-slate-700 focus:ring-slate-400 dark:bg-slate-700 dark:hover:bg-slate-600"
       onClick={revealCell}
       onContextMenu={toggleFlag}
-      onMouseLeave={unsetRevealing}
-      onMouseDown={setRevealing}
-      onMouseUp={unsetRevealing}
+      onPointerLeave={unsetRevealing}
+      onPointerDown={setRevealing}
+      onPointerUp={unsetRevealing}
     ></BaseButton>
   );
 };

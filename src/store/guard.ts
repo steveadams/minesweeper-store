@@ -21,8 +21,8 @@ export type GuardCondition<
 export const guard =
   <SC extends StoreContext, E extends EventObject>(
     condition: GuardCondition<SC, E>,
-    assigner: StoreAssigner<SC, E>
-  ): StoreAssigner<SC, E> =>
+    assigner: StoreAssigner<SC, E, any>
+  ): StoreAssigner<SC, E, any> =>
   (ctx, event) => {
     const result = condition(ctx, event);
 
@@ -31,7 +31,7 @@ export const guard =
       return {};
     }
 
-    return assigner(ctx, event);
+    return assigner(ctx, event, null);
   };
 
 export const gameIsNotOver: GuardCondition<GameState> = (ctx) =>

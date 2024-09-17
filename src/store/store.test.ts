@@ -66,9 +66,6 @@ const { beforeEach, describe, it, expect } = import.meta.vitest;
 let store: GameStore;
 let mineIndices: Set<number>;
 
-// Safe cell indices should match this set:
-// Set(20) { 2, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 22, 23, 24, 25 }
-
 beforeEach(() => {
   // Make Math.random() deterministic in order to predict where mines are placed
   seedrandom("minesweeper", { global: true });
@@ -261,6 +258,12 @@ describe("initialize game behaviour", () => {
     expectGameStatus(store, "ready");
     expectNotToBeRevealed(store, [0, 1, 2, 3]);
     expect(store.getSnapshot().context.timeElapsed).toBe(0);
+  });
+});
+
+describe("game status behaviour", () => {
+  it("should begin with the ready state", () => {
+    expectGameStatus(store, "ready");
   });
 
   it("should win when all safe cells are revealed", () => {
