@@ -1,4 +1,4 @@
-import type { Accessor, Component } from "solid-js";
+import type { Accessor, Component, JSX } from "solid-js";
 import { createMemo, createSignal } from "solid-js";
 import { useStore } from "./StoreContext";
 import { GameInfo } from "./GameInfo";
@@ -133,47 +133,90 @@ const CustomDialog: Component<{
   );
 };
 
+const presets = [
+  {
+    name: "Beginner",
+    description: "5x5 - 5 mines",
+    href: "#",
+    class: "bg-green-50",
+  },
+  {
+    name: "Intermediate",
+    description: "10x10 - 20 mines",
+    href: "#",
+    class: "bg-green-100",
+  },
+  {
+    name: "Advanced",
+    description: "20x20 - 50 mines",
+    href: "#",
+    class: "bg-green-200",
+  },
+  {
+    name: "Custom",
+    description: "The sky's the limit!",
+    href: "#",
+    class: "bg-green-300",
+  },
+];
+
 export const Minesweeper: Component = () => {
   const store = useStore();
   const [isDialogOpen, setIsDialogOpen] = createSignal(false);
 
   return (
-    <div class="mb-12">
-      <h1 class="font-black mb-4">Minesweeper</h1>
-
-      <span class="isolate inline-flex rounded-md mx-auto my-8 ring-1 bg-white ring-inset ring-gray-300 overflow-hidden">
-        <ConfigureGameButton
-          label={"Beginner"}
-          onClick={() =>
-            store.send({
-              type: "initialize",
-              config: { width: 5, height: 5, mines: 5 },
-            })
-          }
-        />
-        <ConfigureGameButton
-          label={"Intermediate"}
-          onClick={() =>
-            store.send({
-              type: "initialize",
-              config: { width: 15, height: 15, mines: 25 },
-            })
-          }
-        />
-        <ConfigureGameButton
-          label={"Advanced"}
-          onClick={() =>
-            store.send({
-              type: "initialize",
-              config: { width: 20, height: 20, mines: 100 },
-            })
-          }
-        />
-        <ConfigureGameButton
-          label={"Custom"}
-          onClick={() => setIsDialogOpen(true)}
-        />
-      </span>
+    <div class="flex flex-col gap-y-6 py-6">
+      <div class="mx-auto grid max-w-7xl grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-0 lg:grid-cols-4 lg:gap-4 xl:gap-8 text-left">
+        {presets.map((item) => (
+          <div class="group relative -mx-2 flex align-middle gap-6 rounded-lg p-3 text-sm hover:bg-black/50 dark:hover:ring-1 dark:ring-black dark:-ring-offset-4 sm:p-6">
+            <div>
+              <a
+                href={item.href}
+                class="font-semibold text-gray-900 dark:text-white hover:text-pink-600"
+              >
+                {item.name}
+                <span class="absolute inset-0" />
+              </a>
+              <p class="mt-1 text-gray-600 group-hover:text-gray-400 dark:group-hover:text-gray-200">
+                {item.description}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+      {/* <span class="isolate inline-flex rounded-md mx-auto my-8 ring-1 bg-white ring-inset ring-gray-300 overflow-hidden">
+          <ConfigureGameButton
+            label={"Beginner"}
+            onClick={() =>
+              store.send({
+                type: "initialize",
+                config: { width: 5, height: 5, mines: 5 },
+              })
+            }
+          />
+          <ConfigureGameButton
+            label={"Intermediate"}
+            onClick={() =>
+              store.send({
+                type: "initialize",
+                config: { width: 15, height: 15, mines: 25 },
+              })
+            }
+          />
+          <ConfigureGameButton
+            label={"Advanced"}
+            onClick={() =>
+              store.send({
+                type: "initialize",
+                config: { width: 20, height: 20, mines: 100 },
+              })
+            }
+          />
+          <ConfigureGameButton
+            label={"Custom"}
+            onClick={() => setIsDialogOpen(true)}
+          />
+        </span> */}
 
       <CustomDialog
         isOpen={isDialogOpen}

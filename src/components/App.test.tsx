@@ -14,29 +14,20 @@ import seedrandom from "seedrandom";
 import App from "./App";
 import { face } from "../types";
 
-function createUser() {
-  return userEvent.setup({
+const createUser = () =>
+  userEvent.setup({
     advanceTimers: vi.advanceTimersByTimeAsync,
   });
-}
 
-function getCell(index: number) {
+const getCell = (index: number) => {
   const cell = screen.getAllByRole("gridcell")[index];
   assert(cell, `Cell with index ${index} not found`);
   return cell;
-}
+};
 
-function getTimer() {
-  return screen.getByRole("timer");
-}
-
-function getStatus() {
-  return screen.getByRole("status");
-}
-
-function getFlags() {
-  return screen.getByRole("meter");
-}
+const getTimer = () => screen.getByRole("timer");
+const getStatus = () => screen.getByRole("status");
+const getFlags = () => screen.getByRole("meter");
 
 // TODO: This is not very thorough
 function expectGridDimensions(width: number, height: number) {
@@ -69,11 +60,11 @@ function expectRevealedCellWithAdjacentCount(
 function expectCoveredCell(cellIndices: number[]) {
   cellIndices.forEach((index) => {
     const cell = getCell(index);
-    expectCellType(cell, "covered");
+    expectCellTypeToBe(cell, "covered");
   });
 }
 
-function expectCellType(
+function expectCellTypeToBe(
   cell: HTMLElement | undefined,
   type: "covered" | "flagged" | "revealed" | "mine",
   value?: string,
@@ -81,10 +72,8 @@ function expectCellType(
   expect(cell).toHaveAttribute(`data-${type}`, value);
 }
 
-function expectFace(f: (typeof face)[keyof typeof face]) {
-  const status = getStatus();
-  expect(status).toHaveTextContent(f);
-}
+const expectFaceToBe = (faceKey: keyof typeof face) =>
+  expect(getStatus()).toHaveTextContent(face[faceKey]);
 
 type Digit = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 function expectTimeToBe(time: `${Digit}${Digit}${Digit}`) {
@@ -122,11 +111,9 @@ describe("game state interactions", () => {
     render(() => <App />);
 
     expectTimeToBe("000");
-    expectFace(face["okay"]);
+    expectFaceToBe("okay");
 
-    const cell = getCell(0);
-
-    await user.click(cell);
+    await user.click(getCell(0));
 
     await advanceTimersBy(1000);
     expectTimeToBe("001");
@@ -136,9 +123,8 @@ describe("game state interactions", () => {
     const user = createUser();
     render(() => <App />);
 
-    // Game is not started
     expectTimeToBe("000");
-    expectFace(face["okay"]);
+    expectFaceToBe("okay");
 
     const cell = getCell(0);
 
@@ -146,9 +132,11 @@ describe("game state interactions", () => {
     await user.pointer({ keys: "[/MouseRight]", target: cell });
 
     // Covered cell is replaced with a flagged cell
-    expectCellType(getCell(0), "flagged");
+    expectCellTypeToBe(getCell(0), "flagged");
     expectFlagsLeftToBe(4);
+
     await advanceTimersBy(1100);
+
     expectTimeToBe("001");
   });
 
@@ -158,82 +146,72 @@ describe("game state interactions", () => {
     render(() => <App />);
 
     expectTimeToBe("000");
-    expectFace(face["okay"]);
+    expectFaceToBe("okay");
+    expectCellTypeToBe(getCell(cellIndexWithMine), "covered");
 
-    const cell = getCell(cellIndexWithMine);
+    await user.click(getCell(cellIndexWithMine));
 
-    await user.click(cell);
-
-    expectCellType(cell, "mine");
-    expectFace(face.gameOver);
+    // Same query should result in a cell with a mine
+    expectCellTypeToBe(getCell(cellIndexWithMine), "mine");
+    expectFaceToBe("gameOver");
   });
 
   it("tracks time and ends the game at 999 seconds", async () => {
     const user = createUser();
     render(() => <App />);
 
-    const cell = getCell(0);
-
-    await user.click(cell);
-
-    // Fast-forward time by 5000ms
+    await user.click(getCell(0));
     await advanceTimersBy(5000);
 
-    // Check the timer display after time manipulation
     expectTimeToBe("005");
-    expectFace(face["okay"]);
+    expectFaceToBe("okay");
 
-    // Fast-forward time by 5000ms
     await advanceTimersBy(5000);
+
     expectTimeToBe("010");
-    expectFace(face["okay"]);
+    expectFaceToBe("okay");
 
     // Fast-forward time by 990s (should end the game)
     await advanceTimersBy(990_000);
 
     expectTimeToBe("999");
-    expectFace(face.gameOver);
+    expectFaceToBe("gameOver");
   });
 
   it("shows a worried face as a cell is being revealed", async () => {
     const user = createUser();
     render(() => <App />);
 
-    expectFace(face["okay"]);
-
     const cell = getCell(0);
+    expectFaceToBe("okay");
 
-    // Press the pointer down...
+    // Press the pointer down
     await user.pointer({ keys: "[MouseLeft>]", target: cell });
-
-    // Add a delay to allow for state updates
     await advanceTimersBy(10);
 
-    expectFace(face.scared);
+    expectFaceToBe("scared");
 
     // Release the pointer
     await user.pointer({ keys: "[/MouseLeft]", target: cell });
-
     await advanceTimersBy(10);
 
-    expectFace(face["okay"]);
+    expectFaceToBe("okay");
   });
 
   it("doesn't show a worried face as a cell is being flagged", () => {
     render(() => <App />);
 
     const cell = getCell(0);
-
-    expectFace(face["okay"]);
+    expectFaceToBe("okay");
 
     fireEvent.mouseDown(cell, { button: 2 });
-    expectFace(face["okay"]);
+    expectFaceToBe("okay");
 
     fireEvent.mouseUp(cell, { button: 2 });
-    expectFace(face["okay"]);
+    expectFaceToBe("okay");
 
     fireEvent.contextMenu(cell);
-    expectFace(face["okay"]);
+    expectFaceToBe("okay");
   });
 });
 
@@ -242,11 +220,9 @@ describe("cell interaction behaviours", () => {
     const user = createUser();
     render(() => <App />);
 
-    const cell = getCell(0);
-
-    await user.click(cell);
-
+    await user.click(getCell(0));
     await advanceTimersBy(1000);
+
     expectCellsToBeRevealed([
       0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 17, 18, 19,
     ]);
@@ -258,8 +234,8 @@ describe("cell interaction behaviours", () => {
     render(() => <App />);
 
     await user.click(getCell(0));
-
     await advanceTimersBy(1000);
+
     expectRevealedCellWithAdjacentCount([0, 1, 2, 3, 4, 8, 9, 13, 14], 0);
     expectRevealedCellWithAdjacentCount([7, 12, 18, 19], 1);
     expectRevealedCellWithAdjacentCount([5, 6, 17], 2);
@@ -271,6 +247,7 @@ describe("cell interaction behaviours", () => {
 
     await user.click(getCell(5));
     await advanceTimersBy(1000);
+
     expectRevealedCellWithAdjacentCount([5], 2);
     expectCoveredCell([
       0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
@@ -285,13 +262,13 @@ describe("game controls and settings", () => {
     render(() => <App />);
 
     await user.click(getCell(5));
-
     await advanceTimersBy(1500);
+
     expectRevealedCellWithAdjacentCount([5], 2);
 
     await user.click(getCell(2));
-
     await advanceTimersBy(1200);
+
     expectRevealedCellWithAdjacentCount([0, 1, 2, 3, 4, 8, 9, 13, 14], 0);
     expectRevealedCellWithAdjacentCount([7, 12, 18, 19], 1);
     expectRevealedCellWithAdjacentCount([5, 6, 17], 2);

@@ -1,7 +1,5 @@
 import { createStore } from "@xstate/store";
 import { match } from "ts-pattern";
-import seedrandom from "seedrandom";
-seedrandom("minesweeper", { global: true });
 
 import {
   coveredCellWithMine,
@@ -16,7 +14,7 @@ import {
   type RevealedCell,
   type ToggleFlagEvent,
   type RevealCellEvent,
-  CoveredCell,
+  type CoveredCell,
 } from "../types";
 
 // Convert (x, y) coordinates to an index for a 1D array
