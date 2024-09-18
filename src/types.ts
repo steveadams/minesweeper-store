@@ -91,7 +91,7 @@ export type Cell = P.infer<typeof anyCell>;
 
 export type Cells = P.infer<typeof cells>;
 export type Configuration = P.infer<typeof configuration>;
-export type GameState = P.infer<typeof gameState>;
+export type GameContext = P.infer<typeof gameState>;
 
 export type InitializeEvent = { config: Configuration };
 export type RevealCellEvent = { index: number };
@@ -127,5 +127,5 @@ export type Emitted =
 
 export type GameEvent = ExtractEventsFromPayloadMap<GameEventMap>;
 // TODO: Improve TEmitted type
-export type GameStore = Store<GameState, GameEvent, Emitted>;
+export type GameStore = Store<GameContext, GameEvent, Emitted>;
 export type GameSnapshot = SnapshotFromStore<GameStore>;

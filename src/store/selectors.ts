@@ -1,5 +1,5 @@
 import { match } from "ts-pattern";
-import { GameSnapshot, GameState } from "../types";
+import { GameSnapshot, GameContext } from "../types";
 
 export const selectGridWidth = (s: GameSnapshot) => s.context.config.width;
 export const selectGameIsStarted = (s: GameSnapshot) =>
@@ -32,7 +32,7 @@ export const face: Record<string, string> = {
 };
 
 export const selectFace = (s: GameSnapshot) =>
-  match(s.context as GameState)
+  match(s.context as GameContext)
     .with(
       { gameStatus: "playing", playerIsRevealingCell: true },
       { gameStatus: "ready", playerIsRevealingCell: true },

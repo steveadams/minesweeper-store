@@ -141,7 +141,8 @@ export const Minesweeper: Component = () => {
 
   return (
     <div class="flex flex-col gap-y-6 py-6">
-      <span class="isolate inline-flex rounded-md mx-auto my-8 ring-1 bg-white ring-inset ring-gray-300 overflow-hidden">
+      <h1 class="text-4xl font-black">Storesweeper</h1>
+      <span class="isolate inline-flex rounded-md mx-auto my-4 ring-1 bg-white ring-inset ring-gray-300 overflow-hidden">
         <Index each={PRESETS}>
           {(preset) => (
             <ConfigureGameButton

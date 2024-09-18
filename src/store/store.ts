@@ -9,7 +9,7 @@ import {
   type GameEventMap,
   type Cells,
   type Emitted,
-  type GameState,
+  type GameContext,
   type GameStore,
   type RevealedCell,
   type ToggleFlagEvent,
@@ -42,32 +42,26 @@ const indexToCoordinates = (gridWidth: number, index: number) => ({
 });
 
 const getValidNeighbourIndices = (
-  gridWidth: number,
-  gridHeight: number,
+  width: number,
+  height: number,
   index: number,
 ): number[] => {
-  const { x, y } = indexToCoordinates(gridWidth, index);
-  const neighbours = [
-    [-1, -1],
-    [-1, 0],
-    [-1, 1],
-    [0, -1],
-    [0, 1],
-    [1, -1],
-    [1, 0],
-    [1, 1],
-  ] as const;
+  const { x, y } = indexToCoordinates(width, index);
 
-  return neighbours
-    .map(([dx, dy]) => {
-      const nextX = x + dx;
-      const nextY = y + dy;
-      if (nextX >= 0 && nextX < gridWidth && nextY >= 0 && nextY < gridHeight) {
-        return coordinatesToIndex(gridWidth, nextX, nextY);
-      }
-      return -1;
-    })
-    .filter((neighbourIndex) => neighbourIndex !== -1);
+  return (
+    [
+      [x - 1, y - 1],
+      [x, y - 1],
+      [x + 1, y - 1],
+      [x - 1, y],
+      [x + 1, y],
+      [x - 1, y + 1],
+      [x, y + 1],
+      [x + 1, y + 1],
+    ] as const
+  )
+    .filter(([nx, ny]) => nx >= 0 && nx < width && ny >= 0 && ny < height)
+    .map(([nx, ny]) => ny * width + nx);
 };
 
 function createGrid(config: Configuration): Cells {
@@ -85,27 +79,24 @@ function createGrid(config: Configuration): Cells {
     }
   }
 
-  const cells: Cell[] = Array.from({ length: totalCells }, (_, idx) => ({
+  const cells: Cell[] = Array.from({ length: totalCells }, (_, index) => ({
     revealed: false,
     flagged: false,
-    mine: mineIndices.has(idx),
+    mine: mineIndices.has(index),
     adjacentMines: getValidNeighbourIndices(
       config.width,
       config.height,
-      idx,
-    ).reduce(
-      (total, neighbourIdx) => total + (mineIndices.has(neighbourIdx) ? 1 : 0),
-      0,
-    ),
+      index,
+    ).filter((neighbourIndex) => mineIndices.has(neighbourIndex)).length,
   }));
 
   return cells;
 }
 
 function toggleFlagLogic(
-  ctx: GameState,
+  ctx: GameContext,
   { index }: ToggleFlagEvent,
-): { flagsLeft: number; cells: Cells; gameStatus: GameState["gameStatus"] } {
+): { flagsLeft: number; cells: Cells; gameStatus: GameContext["gameStatus"] } {
   if (!playerCanInteract(ctx)) {
     return ctx;
   }
@@ -136,11 +127,11 @@ function toggleFlagLogic(
   };
 }
 
-function playerCanInteract(ctx: GameState) {
+function playerCanInteract(ctx: GameContext) {
   return ctx.gameStatus !== "game-over" && ctx.gameStatus !== "win";
 }
 
-function revealCellLogic(ctx: GameState, event: RevealCellEvent) {
+function revealCellLogic(ctx: GameContext, event: RevealCellEvent) {
   if (!playerCanInteract(ctx)) {
     console.log("Reveal cell not allowed");
     return ctx;
@@ -241,7 +232,7 @@ function revealMines(cells: Cells): Cells {
 // Trigger game over if the game has been running for 999 seconds
 function tickLogic({
   timeElapsed,
-}: GameState): Pick<GameState, "timeElapsed" | "gameStatus"> {
+}: GameContext): Pick<GameContext, "timeElapsed" | "gameStatus"> {
   const nextTick = timeElapsed + 1;
   return {
     timeElapsed: nextTick,
@@ -249,7 +240,7 @@ function tickLogic({
   };
 }
 
-function configureStoreContext(config: Configuration): GameState {
+function configureStoreContext(config: Configuration): GameContext {
   return {
     config,
     cells: createGrid(config),
@@ -263,7 +254,7 @@ function configureStoreContext(config: Configuration): GameState {
 }
 
 export function setupStore(config: Configuration): GameStore {
-  return createStore<GameState, GameEventMap, { emitted: Emitted }>({
+  return createStore<GameContext, GameEventMap, { emitted: Emitted }>({
     types: {} as { emitted: Emitted },
     context: configureStoreContext(config),
     on: {
