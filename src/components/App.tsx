@@ -5,7 +5,7 @@ import { StoreProvider } from "./StoreContext";
 const App: Component = () => {
   return (
     <StoreProvider>
-      <main class="container mx-auto px-4 sm:px-6 lg:px-8 rounded-lg bg-white dark:bg-gray-900 shadow">
+      <main class="container mx-auto">
         <Minesweeper />
         <footer class="flex flex-col gap-4 py-8 items-center justify-center text-sm">
           <p>

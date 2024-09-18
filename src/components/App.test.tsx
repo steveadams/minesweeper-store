@@ -13,6 +13,7 @@ import seedrandom from "seedrandom";
 
 import App from "./App";
 import { face } from "../types";
+import { PRESETS } from "../store/store";
 
 const createUser = () =>
   userEvent.setup({
@@ -293,19 +294,19 @@ describe("game controls and settings", () => {
     const intermediateButton = screen.getByText("Intermediate");
     const advancedButton = screen.getByText("Advanced");
 
-    expectGridDimensions(5, 5);
+    expectGridDimensions(PRESETS[0].config.width, PRESETS[0].config.height);
 
     await user.click(intermediateButton);
     await advanceTimersBy(10);
-    expectGridDimensions(15, 15);
+    expectGridDimensions(PRESETS[1].config.width, PRESETS[1].config.height);
 
     await user.click(beginnerButton);
     await advanceTimersBy(10);
-    expectGridDimensions(5, 5);
+    expectGridDimensions(PRESETS[0].config.width, PRESETS[0].config.height);
 
     await user.click(advancedButton);
     await advanceTimersBy(10);
-    expectGridDimensions(20, 20);
+    expectGridDimensions(PRESETS[2].config.width, PRESETS[2].config.height);
   });
 
   it("can initialize custom game settings", async () => {
