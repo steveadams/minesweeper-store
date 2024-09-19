@@ -6,53 +6,57 @@ import type {
 import { Data } from "effect";
 import { Schema } from "@effect/schema";
 
+const DefaultFalse = Schema.Boolean.pipe(
+  Schema.propertySignature,
+  Schema.withConstructorDefault(() => false)
+);
+
+export const BaseCellSchema = Schema.Struct({
+  revealed: DefaultFalse,
+  flagged: DefaultFalse,
+  mine: DefaultFalse,
+  adjacentMines: Schema.Number.pipe(
+    Schema.propertySignature,
+    Schema.withConstructorDefault(() => 0)
+  ),
+});
+
 export const CoveredCellSchema = Schema.Struct({
+  ...BaseCellSchema.fields,
   revealed: Schema.Literal(false),
   flagged: Schema.Literal(false),
-  mine: Schema.Boolean,
-  adjacentMines: Schema.Number,
 });
 
 export const CoveredClearCellSchema = Schema.Struct({
-  revealed: Schema.Literal(false),
-  flagged: Schema.Literal(false),
+  ...CoveredCellSchema.fields,
   mine: Schema.Literal(false),
-  adjacentMines: Schema.Number,
 });
 
 export const CoveredMineSchema = Schema.Struct({
-  revealed: Schema.Literal(false),
-  flagged: Schema.Literal(false),
+  ...CoveredCellSchema.fields,
   mine: Schema.Literal(true),
-  adjacentMines: Schema.Number,
 } as const);
 
 export const FlaggedCellSchema = Schema.Struct({
+  ...BaseCellSchema.fields,
   revealed: Schema.Literal(false),
   flagged: Schema.Literal(true),
-  mine: Schema.Boolean,
-  adjacentMines: Schema.Number,
 } as const);
 
 export const RevealedCellSchema = Schema.Struct({
+  ...BaseCellSchema.fields,
   flagged: Schema.Literal(false),
   revealed: Schema.Literal(true),
-  mine: Schema.Boolean,
-  adjacentMines: Schema.Number,
 } as const);
 
 export const RevealedMineSchema = Schema.Struct({
-  revealed: Schema.Literal(true),
-  flagged: Schema.Literal(false),
+  ...RevealedCellSchema.fields,
   mine: Schema.Literal(true),
-  adjacentMines: Schema.Number,
 } as const);
 
 export const RevealedClearCellSchema = Schema.Struct({
-  revealed: Schema.Literal(true),
-  flagged: Schema.Literal(false),
+  ...RevealedCellSchema.fields,
   mine: Schema.Literal(false),
-  adjacentMines: Schema.Number,
 } as const);
 
 export const CellSchema = Schema.Union(
@@ -65,34 +69,34 @@ export const CellSchema = Schema.Union(
   RevealedMineSchema
 );
 
-export type CoveredCell = Schema.Schema.Type<typeof CoveredCellSchema>;
+export type CoveredCell = typeof CoveredCellSchema.Type;
 export type CoveredClearCell = Schema.Schema.Type<
   typeof CoveredClearCellSchema
 >;
-export type CoveredMine = Schema.Schema.Type<typeof CoveredMineSchema>;
-export type FlaggedCell = Schema.Schema.Type<typeof FlaggedCellSchema>;
-export type RevealedCell = Schema.Schema.Type<typeof RevealedCellSchema>;
+export type CoveredMine = typeof CoveredMineSchema.Type;
+export type FlaggedCell = typeof FlaggedCellSchema.Type;
+export type RevealedCell = typeof RevealedCellSchema.Type;
 export type RevealedClearCell = Schema.Schema.Type<
   typeof RevealedClearCellSchema
 >;
-export type RevealedMine = Schema.Schema.Type<typeof RevealedMineSchema>;
+export type RevealedMine = typeof RevealedMineSchema.Type;
 
 type CellData = Data.TaggedEnum<{
-  Cell: Schema.Schema.Type<typeof CellSchema>;
-  Covered: Schema.Schema.Type<typeof CoveredCellSchema>;
-  CoveredClear: Schema.Schema.Type<typeof CoveredClearCellSchema>;
-  CoveredMine: Schema.Schema.Type<typeof CoveredMineSchema>;
-  Flagged: Schema.Schema.Type<typeof FlaggedCellSchema>;
-  Revealed: Schema.Schema.Type<typeof RevealedCellSchema>;
-  RevealedClear: Schema.Schema.Type<typeof RevealedClearCellSchema>;
-  RevealedMine: Schema.Schema.Type<typeof RevealedMineSchema>;
+  Cell: typeof CellSchema.Type;
+  Covered: typeof CoveredCellSchema.Type;
+  CoveredClear: typeof CoveredClearCellSchema.Type;
+  CoveredMine: typeof CoveredMineSchema.Type;
+  Flagged: typeof FlaggedCellSchema.Type;
+  Revealed: typeof RevealedCellSchema.Type;
+  RevealedClear: typeof RevealedClearCellSchema.Type;
+  RevealedMine: typeof RevealedMineSchema.Type;
 }>;
 
 export const CellData = Data.taggedEnum<CellData>();
 
-export type Cell = Schema.Schema.Type<typeof CellSchema>;
-export type Cells = Schema.Schema.Type<typeof CellsSchema>;
-export type Configuration = Schema.Schema.Type<typeof ConfigurationSchema>;
+export type Cell = typeof CellSchema.Type;
+export type Cells = typeof CellsSchema.Type;
+export type Configuration = typeof ConfigurationSchema.Type;
 
 const ConfigurationSchema = Schema.Struct({
   width: Schema.required(Schema.Number).pipe(Schema.between(2, 50)),
@@ -114,7 +118,7 @@ const CellsSchema = Schema.Array(CellSchema);
 const GameContextSchema = Schema.Struct({
   config: ConfigurationSchema,
   cells: CellsSchema,
-  visitedCells: Schema.Number,
+  visitedCells: Schema.Set(Schema.Number),
   gameStatus: Schema.Literal("ready", "playing", "win", "game-over"),
   cellsRevealed: Schema.Number,
   flagsLeft: Schema.Number,
@@ -141,12 +145,12 @@ const GameContextSchema = Schema.Struct({
   )
 );
 
-export type GameContext = Schema.Schema.Type<typeof GameContextSchema>;
+export type GameContext = typeof GameContextSchema.Type;
 
 export const GameContextData = Data.case<GameContext>;
 
 export type InitializeEvent = {
-  config: Schema.Schema.Type<typeof ConfigurationSchema>;
+  config: typeof ConfigurationSchema.Type;
 };
 export type RevealEvent = { index: number };
 export type ToggleFlagEvent = { index: number };

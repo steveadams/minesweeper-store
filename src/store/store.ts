@@ -1,5 +1,5 @@
 import { createStore } from "@xstate/store";
-import { Effect, Match, pipe } from "effect";
+import { Effect, Match } from "effect";
 
 import {
   type Cell,
@@ -16,7 +16,10 @@ import {
   type Cells,
   CellData,
   CoveredClearCellSchema,
+  CoveredMineSchema,
+  CoveredCellSchema,
 } from "../types";
+import { Schema } from "@effect/schema";
 
 export const PRESETS = [
   {
@@ -66,8 +69,10 @@ const getValidNeighbourIndices = (
     .map(([nx, ny]) => ny * width + nx);
 };
 
-const getMineIndices = (config: Configuration) =>
-  Effect.sync(() => {
+const createCells = (config: Configuration) =>
+  Effect.gen(function* (_) {
+    const totalCells = config.width * config.height;
+
     const mineIndices = new Set<number>();
     while (config.mines > mineIndices.size) {
       const row = Math.floor(Math.random() * config.height);
@@ -79,53 +84,19 @@ const getMineIndices = (config: Configuration) =>
       }
     }
 
-    return mineIndices;
-  });
-
-const getTotalCells = (config: Configuration) =>
-  Effect.sync(() => config.width * config.height);
-
-const createCell = (
-  config: Configuration,
-  mineIndices: Set<number>,
-  index: number
-) =>
-  Effect.sync(() => {
-    return CellData.Cell({
-      revealed: false,
-      flagged: false,
-      mine: mineIndices.has(index),
-      adjacentMines: getValidNeighbourIndices(
-        config.width,
-        config.height,
-        index
-      ).filter((neighbourIndex) => mineIndices.has(neighbourIndex)).length,
-    });
-  });
-
-const generateCells = (
-  config: Configuration,
-  mineIndices: Set<number>,
-  totalCells: number
-) =>
-  Effect.sync(() => {
     return Array.from({ length: totalCells }, (_, index) =>
-      createCell(config, mineIndices, index)
+      CellData.Cell({
+        revealed: false,
+        flagged: false,
+        mine: mineIndices.has(index),
+        adjacentMines: getValidNeighbourIndices(
+          config.width,
+          config.height,
+          index
+        ).filter((neighbourIndex) => mineIndices.has(neighbourIndex)).length,
+      })
     );
   });
-
-function createCells(config: Configuration): Cells {
-  const program = Effect.all([
-    getTotalCells(config),
-    getMineIndices(config),
-  ]).pipe(
-    Effect.flatMap(([totalCells, mineIndices]) =>
-      generateCells(config, mineIndices, totalCells)
-    )
-  );
-
-  return Effect.runSync(program);
-}
 
 function toggleFlagLogic(
   ctx: GameContext,
@@ -161,9 +132,20 @@ function toggleFlagLogic(
   };
 }
 
-function playerCanInteract(ctx: GameContext) {
-  return ctx.gameStatus !== "game-over" && ctx.gameStatus !== "win";
-}
+const playerCanInteract = (ctx: GameContext) =>
+  ctx.gameStatus !== "game-over" && ctx.gameStatus !== "win";
+
+const getCoveredCell = (
+  context: GameContext,
+  index: number
+): Effect.Effect<CoveredCell, Error> => {
+  return Match.type<Cell | undefined>().pipe(
+    Match.when(Schema.is(CoveredCellSchema), (cell) => Effect.succeed(cell)),
+    Match.orElse(() =>
+      Effect.fail(new Error(`Cell at index ${index} doesn't exist`))
+    )
+  )(context.cells[index]);
+};
 
 function revealCellLogic(ctx: GameContext, event: RevealEvent) {
   if (!playerCanInteract(ctx)) {
@@ -171,18 +153,12 @@ function revealCellLogic(ctx: GameContext, event: RevealEvent) {
     return ctx;
   }
 
-  const cell = ctx.cells[event.index];
+  const cell = getCoveredCell(ctx, event.index);
 
   let cellsRevealed = 0;
 
   const match = Match.type<CoveredCell>().pipe(
-    Match.when(CoveredClearCellSchema, (_) => _.a),
-    Match.when(CoveredMine, (_) => _.b),
-    Match.exhaustive
-  );
-
-  return match(cell)
-    .with(coveredClearCell, () => {
+    Match.when(Schema.is(CoveredClearCellSchema), () => {
       const updatedCells = [...ctx.cells];
       const visitedCells = new Set<number>(ctx.visitedCells);
       const stack: number[] = [event.index];
@@ -206,7 +182,7 @@ function revealCellLogic(ctx: GameContext, event: RevealEvent) {
 
         visitedCells.add(idx);
 
-        const revealedCell = { ...cell, revealed: true } as RevealedCell;
+        const revealedCell = CellData.Revealed({ ...cell, revealed: true });
         updatedCells[idx] = revealedCell;
         cellsRevealed++;
 
@@ -219,15 +195,15 @@ function revealCellLogic(ctx: GameContext, event: RevealEvent) {
           );
 
           neighbors.forEach((neighbourIdx) => {
-            const neighbourCell = updatedCells[neighbourIdx];
+            const neighbour = updatedCells[neighbourIdx];
 
-            if (!neighbourCell) {
+            if (!neighbour) {
               console.log("Neighbor cell not found");
               return;
             }
 
             // Add neighbors to the stack if they haven't been visited or flagged
-            if (!visitedCells.has(neighbourIdx) && !neighbourCell.flagged) {
+            if (!visitedCells.has(neighbourIdx) && !neighbour.flagged) {
               stack.push(neighbourIdx);
             }
           });
@@ -245,12 +221,15 @@ function revealCellLogic(ctx: GameContext, event: RevealEvent) {
         visitedCells: visitedCells,
         gameStatus: playerWon ? "win" : "playing",
       };
-    })
-    .with(coveredMine, () => ({
+    }),
+    Match.when(Schema.is(CoveredMineSchema), () => ({
       cells: revealMines(ctx.cells),
       gameStatus: "game-over",
-    }))
-    .otherwise(() => ({}));
+    })),
+    Match.exhaustive
+  );
+
+  return Effect.runSync(match(cell));
 }
 
 function revealMines(cells: Cells): Cells {
