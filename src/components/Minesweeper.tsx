@@ -44,7 +44,7 @@ const CustomSettingField: Component<{
       type="number"
       placeholder="10"
       required
-      class="mt-2 w-full p-2.5 text-sm rounded-lg border border-gray-300 focus:ring-red-500 focus:border-red-500"
+      class="w-full p-1 text-sm rounded-lg border border-gray-300 focus:ring-red-500 focus:border-red-500"
     />
   </div>
 );

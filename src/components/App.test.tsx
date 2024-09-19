@@ -340,4 +340,74 @@ describe("game controls and settings", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expectGridDimensions(10, 10);
   });
+
+  const getWidthInput = () => screen.getByLabelText<HTMLInputElement>("width");
+  const getHeightInput = () =>
+    screen.getByLabelText<HTMLInputElement>("height");
+  const getMinesInput = () => screen.getByLabelText<HTMLInputElement>("mines");
+
+  it("cannot initialize custom game settings with invalid or missing values", async () => {
+    const user = createUser();
+    render(() => <App />);
+
+    await user.click(screen.getByText("Custom"));
+    await advanceTimersBy(10);
+
+    const safeInputValue = Math.floor(
+      (Number(getWidthInput().min) + Number(getWidthInput().max)) / 2,
+    ).toString();
+    const startGameButton = screen.getByText("Start Game");
+
+    // Test width input
+    await user.click(startGameButton);
+    expect(getWidthInput().validity.valid).toBe(false);
+
+    await user.type(
+      getWidthInput(),
+      (Number(getWidthInput().max) + 10).toString(),
+    );
+    await user.click(startGameButton);
+    expect(getWidthInput().validity.rangeOverflow).toBe(true);
+
+    await user.clear(getWidthInput());
+    await user.type(getWidthInput(), safeInputValue);
+    await user.click(startGameButton);
+    expect(getWidthInput().validity.valid).toBe(true);
+
+    // Test height input
+    expect(getHeightInput().validity.valid).toBe(false);
+    await user.type(
+      getHeightInput(),
+      (Number(getHeightInput().min) - 1).toString(),
+    );
+    await user.click(startGameButton);
+    expect(getHeightInput().validity.rangeUnderflow).toBe(true);
+
+    await user.clear(getHeightInput());
+    await user.type(getHeightInput(), safeInputValue);
+    await user.click(startGameButton);
+    expect(getHeightInput().validity.valid).toBe(true);
+
+    // Test mines input
+    expect(getMinesInput().validity.valid).toBe(false);
+
+    await user.type(getMinesInput(), "0");
+    await user.click(startGameButton);
+    expect(getMinesInput().validity.rangeUnderflow).toBe(true);
+
+    const maxMines =
+      Number(getWidthInput().value) * Number(getHeightInput().value) - 1;
+    await user.clear(getMinesInput());
+    await user.type(getMinesInput(), (maxMines + 1).toString());
+    await user.click(startGameButton);
+    expect(getMinesInput().validity.rangeOverflow).toBe(true);
+
+    await user.clear(getMinesInput());
+    await user.type(getMinesInput(), maxMines.toString());
+    await user.click(startGameButton);
+
+    expect(getWidthInput().validity.valid).toBe(true);
+    expect(getHeightInput().validity.valid).toBe(true);
+    expect(getMinesInput().validity.valid).toBe(true);
+  });
 });
