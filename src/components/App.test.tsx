@@ -311,9 +311,11 @@ describe("game controls and settings", () => {
 
   it("can initialize custom game settings", async () => {
     const user = createUser();
-    render(() => <App />);
+    const { container } = render(() => <App />);
 
     const customButton = screen.getByText("Custom");
+    const startGameButton = container.querySelector('button[type="submit"]');
+    assert(startGameButton);
 
     expectGridDimensions(5, 5);
 
@@ -333,7 +335,7 @@ describe("game controls and settings", () => {
     await user.type(widthInput, "10");
     await user.type(heightInput, "10");
     await user.type(minesInput, "10");
-    await user.click(screen.getByText("Start Game"));
+    await user.click(startGameButton);
 
     await advanceTimersBy(10);
 
@@ -348,7 +350,7 @@ describe("game controls and settings", () => {
 
   it("cannot initialize custom game settings with invalid or missing values", async () => {
     const user = createUser();
-    render(() => <App />);
+    const { container } = render(() => <App />);
 
     await user.click(screen.getByText("Custom"));
     await advanceTimersBy(10);
@@ -356,7 +358,8 @@ describe("game controls and settings", () => {
     const safeInputValue = Math.floor(
       (Number(getWidthInput().min) + Number(getWidthInput().max)) / 2,
     ).toString();
-    const startGameButton = screen.getByText("Start Game");
+    const startGameButton = container.querySelector('button[type="submit"]');
+    assert(startGameButton);
 
     // Test width input
     await user.click(startGameButton);

@@ -49,6 +49,6 @@ h1 {
 @media (prefers-color-scheme: light) {
     :root {
         color: #222;
-        background-color: #eeeeee;
+        background-color: #fff;
     }
 }

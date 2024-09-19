@@ -44,7 +44,7 @@ const CustomSettingField: Component<{
       type="number"
       placeholder="10"
       required
-      class="w-full p-1 text-sm rounded-lg border border-gray-300 focus:ring-red-500 focus:border-red-500"
+      class="w-full p-2 text-sm rounded-lg border border-gray-300 focus:ring-red-500 focus:border-red-500"
     />
   </div>
 );
@@ -103,28 +103,27 @@ const CustomDialog: Component<{
                 <path d="M11.9997 10.5865L16.9495 5.63672L18.3637 7.05093L13.4139 12.0007L18.3637 16.9504L16.9495 18.3646L11.9997 13.4149L7.04996 18.3646L5.63574 16.9504L10.5855 12.0007L5.63574 7.05093L7.04996 5.63672L11.9997 10.5865Z"></path>
               </svg>
             </button>
-            <form onSubmit={handleSubmit}>
-              <div class="flex gap-8">
-                <CustomSettingField
-                  name="width"
-                  min={2}
-                  max={() => 50}
-                  onChange={handleWidthChange}
-                />
-                <CustomSettingField
-                  name="height"
-                  min={2}
-                  max={() => 50}
-                  onChange={handleHeightChange}
-                />
-                <CustomSettingField name="mines" min={1} max={maximumMines} />
-              </div>
+            <form onSubmit={handleSubmit} class="flex gap-8">
+              <CustomSettingField
+                name="width"
+                min={2}
+                max={() => 50}
+                onChange={handleWidthChange}
+              />
+              <CustomSettingField
+                name="height"
+                min={2}
+                max={() => 50}
+                onChange={handleHeightChange}
+              />
+              <CustomSettingField name="mines" min={1} max={maximumMines} />
               <div class="mt-6 flex items-center justify-end gap-x-6">
                 <button
                   type="submit"
+                  name="submit"
                   class="rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
                 >
-                  Start Game
+                  Go
                 </button>
               </div>
             </form>
