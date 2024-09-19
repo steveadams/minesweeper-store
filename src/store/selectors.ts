@@ -1,5 +1,5 @@
 import { match } from "ts-pattern";
-import { GameSnapshot, GameContext } from "../types";
+import { GameSnapshot, GameContext, face } from "../types";
 
 export const selectGridWidth = (s: GameSnapshot) => s.context.config.width;
 export const selectGameIsStarted = (s: GameSnapshot) =>
@@ -23,13 +23,6 @@ export const selectGameIsWon = (s: GameSnapshot) => {
 };
 
 export const selectConfig = (s: GameSnapshot) => s.context.config;
-
-export const face: Record<string, string> = {
-  okay: "🙂",
-  scared: "😬",
-  win: "😀",
-  gameOver: "😵",
-};
 
 export const selectFace = (s: GameSnapshot) =>
   match(s.context as GameContext)

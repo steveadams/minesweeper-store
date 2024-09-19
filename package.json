@@ -12,7 +12,9 @@
   },
   "main": "src/index.tsx",
   "dependencies": {
+    "@effect/schema": "^0.73.2",
     "@xstate/store": "^2.4.0",
+    "effect": "^3.8.2",
     "solid-js": "^1.8.21",
     "ts-pattern": "^5.3.1"
   },

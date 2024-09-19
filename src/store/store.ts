@@ -1,5 +1,5 @@
 import { createStore } from "@xstate/store";
-import { match } from "ts-pattern";
+import { Match } from "effect";
 
 import {
   coveredCellWithMine,
@@ -11,9 +11,12 @@ import {
   type Emitted,
   type GameContext,
   type GameStore,
+  type CoveredCellWithMine,
+  type CoveredCellWithoutMine,
   type RevealedCell,
   type ToggleFlagEvent,
   type RevealCellEvent,
+  CoveredCell,
 } from "../types";
 
 export const PRESETS = [
@@ -44,7 +47,7 @@ const indexToCoordinates = (gridWidth: number, index: number) => ({
 const getValidNeighbourIndices = (
   width: number,
   height: number,
-  index: number,
+  index: number
 ): number[] => {
   const { x, y } = indexToCoordinates(width, index);
 
@@ -79,6 +82,7 @@ function createGrid(config: Configuration): Cells {
     }
   }
 
+  // TODO: Make cells with Effect function
   const cells: Cell[] = Array.from({ length: totalCells }, (_, index) => ({
     revealed: false,
     flagged: false,
@@ -86,7 +90,7 @@ function createGrid(config: Configuration): Cells {
     adjacentMines: getValidNeighbourIndices(
       config.width,
       config.height,
-      index,
+      index
     ).filter((neighbourIndex) => mineIndices.has(neighbourIndex)).length,
   }));
 
@@ -95,7 +99,7 @@ function createGrid(config: Configuration): Cells {
 
 function toggleFlagLogic(
   ctx: GameContext,
-  { index }: ToggleFlagEvent,
+  { index }: ToggleFlagEvent
 ): { flagsLeft: number; cells: Cells; gameStatus: GameContext["gameStatus"] } {
   if (!playerCanInteract(ctx)) {
     return ctx;
@@ -138,7 +142,14 @@ function revealCellLogic(ctx: GameContext, event: RevealCellEvent) {
   }
 
   const cell = ctx.cells[event.index];
+
   let cellsRevealed = 0;
+
+  const match = Match.type<CoveredCell>().pipe(
+    Match.when(CoveredCellWithoutMine, (_) => _.a),
+    Match.when(coveredCellWithMine, (_) => _.b),
+    Match.exhaustive
+  );
 
   return match(cell)
     .with(coveredCellWithoutMine, () => {
@@ -174,7 +185,7 @@ function revealCellLogic(ctx: GameContext, event: RevealCellEvent) {
           const neighbors = getValidNeighbourIndices(
             ctx.config.width,
             ctx.config.height,
-            idx,
+            idx
           );
 
           neighbors.forEach((neighbourIdx) => {
