@@ -1,22 +1,21 @@
 import { createStore } from "@xstate/store";
-import { Match } from "effect";
+import { Effect, Match, pipe } from "effect";
 
 import {
-  coveredCellWithMine,
-  coveredCellWithoutMine,
   type Cell,
   type Configuration,
   type GameEventMap,
-  type Cells,
   type Emitted,
   type GameContext,
   type GameStore,
-  type CoveredCellWithMine,
-  type CoveredCellWithoutMine,
-  type RevealedCell,
   type ToggleFlagEvent,
-  type RevealCellEvent,
-  CoveredCell,
+  type RevealEvent,
+  type CoveredCell,
+  type CoveredClearCell,
+  type CoveredMine,
+  type Cells,
+  CellData,
+  CoveredClearCellSchema,
 } from "../types";
 
 export const PRESETS = [
@@ -67,34 +66,65 @@ const getValidNeighbourIndices = (
     .map(([nx, ny]) => ny * width + nx);
 };
 
-function createGrid(config: Configuration): Cells {
-  const totalCells = config.width * config.height;
+const getMineIndices = (config: Configuration) =>
+  Effect.sync(() => {
+    const mineIndices = new Set<number>();
+    while (config.mines > mineIndices.size) {
+      const row = Math.floor(Math.random() * config.height);
+      const col = Math.floor(Math.random() * config.width);
+      const idx = coordinatesToIndex(config.width, col, row);
 
-  // Create locations for the mines
-  const mineIndices = new Set<number>();
-  while (config.mines > mineIndices.size) {
-    const row = Math.floor(Math.random() * config.height);
-    const col = Math.floor(Math.random() * config.width);
-    const idx = coordinatesToIndex(config.width, col, row);
-
-    if (!mineIndices.has(idx)) {
-      mineIndices.add(idx);
+      if (!mineIndices.has(idx)) {
+        mineIndices.add(idx);
+      }
     }
-  }
 
-  // TODO: Make cells with Effect function
-  const cells: Cell[] = Array.from({ length: totalCells }, (_, index) => ({
-    revealed: false,
-    flagged: false,
-    mine: mineIndices.has(index),
-    adjacentMines: getValidNeighbourIndices(
-      config.width,
-      config.height,
-      index
-    ).filter((neighbourIndex) => mineIndices.has(neighbourIndex)).length,
-  }));
+    return mineIndices;
+  });
 
-  return cells;
+const getTotalCells = (config: Configuration) =>
+  Effect.sync(() => config.width * config.height);
+
+const createCell = (
+  config: Configuration,
+  mineIndices: Set<number>,
+  index: number
+) =>
+  Effect.sync(() => {
+    return CellData.Cell({
+      revealed: false,
+      flagged: false,
+      mine: mineIndices.has(index),
+      adjacentMines: getValidNeighbourIndices(
+        config.width,
+        config.height,
+        index
+      ).filter((neighbourIndex) => mineIndices.has(neighbourIndex)).length,
+    });
+  });
+
+const generateCells = (
+  config: Configuration,
+  mineIndices: Set<number>,
+  totalCells: number
+) =>
+  Effect.sync(() => {
+    return Array.from({ length: totalCells }, (_, index) =>
+      createCell(config, mineIndices, index)
+    );
+  });
+
+function createCells(config: Configuration): Cells {
+  const program = Effect.all([
+    getTotalCells(config),
+    getMineIndices(config),
+  ]).pipe(
+    Effect.flatMap(([totalCells, mineIndices]) =>
+      generateCells(config, mineIndices, totalCells)
+    )
+  );
+
+  return Effect.runSync(program);
 }
 
 function toggleFlagLogic(
@@ -135,7 +165,7 @@ function playerCanInteract(ctx: GameContext) {
   return ctx.gameStatus !== "game-over" && ctx.gameStatus !== "win";
 }
 
-function revealCellLogic(ctx: GameContext, event: RevealCellEvent) {
+function revealCellLogic(ctx: GameContext, event: RevealEvent) {
   if (!playerCanInteract(ctx)) {
     console.log("Reveal cell not allowed");
     return ctx;
@@ -146,13 +176,13 @@ function revealCellLogic(ctx: GameContext, event: RevealCellEvent) {
   let cellsRevealed = 0;
 
   const match = Match.type<CoveredCell>().pipe(
-    Match.when(CoveredCellWithoutMine, (_) => _.a),
-    Match.when(coveredCellWithMine, (_) => _.b),
+    Match.when(CoveredClearCellSchema, (_) => _.a),
+    Match.when(CoveredMine, (_) => _.b),
     Match.exhaustive
   );
 
   return match(cell)
-    .with(coveredCellWithoutMine, () => {
+    .with(coveredClearCell, () => {
       const updatedCells = [...ctx.cells];
       const visitedCells = new Set<number>(ctx.visitedCells);
       const stack: number[] = [event.index];
@@ -216,7 +246,7 @@ function revealCellLogic(ctx: GameContext, event: RevealCellEvent) {
         gameStatus: playerWon ? "win" : "playing",
       };
     })
-    .with(coveredCellWithMine, () => ({
+    .with(coveredMine, () => ({
       cells: revealMines(ctx.cells),
       gameStatus: "game-over",
     }))
@@ -254,7 +284,7 @@ function tickLogic({
 function configureStoreContext(config: Configuration): GameContext {
   return {
     config,
-    cells: createGrid(config),
+    cells: createCells(config),
     visitedCells: new Set<number>(),
     gameStatus: "ready",
     cellsRevealed: 0,

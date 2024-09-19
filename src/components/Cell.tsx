@@ -3,7 +3,7 @@ import {
   type Cell,
   coveredCell,
   flaggedCell,
-  revealedCellWithMine,
+  revealedMine,
   revealedClearCell,
 } from "../types";
 import { useStore, useStoreSelector } from "./StoreContext";
@@ -123,7 +123,7 @@ export const CellButton: CellComponent = (props) => {
       <Match when={isMatching(revealedClearCell, cell())} keyed>
         <RevealedCell {...props} />
       </Match>
-      <Match when={isMatching(revealedCellWithMine, cell())} keyed>
+      <Match when={isMatching(revealedMine, cell())} keyed>
         <RevealedBomb {...props} />
       </Match>
     </Switch>
