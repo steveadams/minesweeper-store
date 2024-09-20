@@ -6,7 +6,7 @@ import {
   gameIsStarted,
   gameIsWon,
 } from "../store/selectors";
-import { getFaceEmoji } from "../data";
+import { FACES } from "../data";
 
 const resetInterval = (interval: number | undefined) => {
   clearInterval(interval);
@@ -49,7 +49,7 @@ export const GameInfo: Component = () => {
           onClick={() => store.send({ type: "initialize", config: config() })}
           aria-label="face"
         >
-          {getFaceEmoji(face())}
+          {FACES[face()]}
         </button>
       </div>
       <time role="timer" datetime={`PT${time().toString()}S`}>

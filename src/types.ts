@@ -1,8 +1,4 @@
-import {
-  ExtractEventsFromPayloadMap,
-  SnapshotFromStore,
-  Store,
-} from "@xstate/store";
+import { createStore, SnapshotFromStore } from "@xstate/store";
 import { P } from "ts-pattern";
 
 import { anyCell, gameState, FACES, revealedCell } from "./data";
@@ -30,10 +26,8 @@ export type EmittedEvents = {
   cause: string;
 };
 
-export type GameStore = Store<
-  GameContext,
-  ExtractEventsFromPayloadMap<GameEvent>,
-  EmittedEvents
+export type GameStore = ReturnType<
+  typeof createStore<GameContext, GameEvent, { emitted: EmittedEvents }>
 >;
 export type GameSnapshot = SnapshotFromStore<GameStore>;
 

@@ -1,5 +1,4 @@
 import { P } from "ts-pattern";
-import { FaceEmoji, FaceState } from "./types";
 
 const baseCell = P.shape({
   revealed: P.boolean,
@@ -31,7 +30,7 @@ export const anyCell = P.union(
   coveredCellWithoutMine,
   flaggedCell,
   revealedClearCell,
-  revealedCellWithMine,
+  revealedCellWithMine
 );
 
 export const gameState = P.shape({
@@ -56,8 +55,6 @@ export const FACES = {
   win: "😀",
   lose: "😵",
 } as const;
-
-export const getFaceEmoji = (state: FaceState): FaceEmoji => FACES[state];
 
 // If changing the Beginner preset, make a copy to preserve for testing purposes.
 export const PRESETS = [
