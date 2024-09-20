@@ -142,7 +142,7 @@ export const Minesweeper: Component = () => {
   onMount(() => {
     const winSub = store.on("win", () => {
       console.log("win");
-      toast.custom(<div>You win 😀</div>);
+      toast.success("You win 😀");
     });
 
     const gameOverSub = store.on("gameOver", () => {
