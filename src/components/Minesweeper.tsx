@@ -20,6 +20,7 @@ export const Minesweeper: Component = () => {
     const endGameSub = store.on("endGame", (event) => {
       match(event.result)
         .with("win", () => {
+          store.send({ type: "win" });
           toast.success(`You won! ${event.cause}`);
         })
         .with("lose", () => {

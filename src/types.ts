@@ -1,11 +1,10 @@
 import { createStore, SnapshotFromStore } from "@xstate/store";
 import { P } from "ts-pattern";
 
-import { anyCell, gameState, FACES, revealedCell } from "./data";
+import { cell, gameState, FACES, revealedCell } from "./data";
 
 export type RevealedCell = P.infer<typeof revealedCell>;
-export type Cell = P.infer<typeof anyCell>;
-
+export type Cell = P.infer<typeof cell>;
 export type GameContext = P.infer<typeof gameState>;
 export type Cells = GameContext["cells"];
 

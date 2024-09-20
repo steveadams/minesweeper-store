@@ -7,11 +7,7 @@ const baseCell = P.shape({
   adjacentMines: P.number,
 });
 
-export const coveredCell = baseCell.and({
-  revealed: false,
-  flagged: false,
-});
-
+export const coveredCell = baseCell.and({ revealed: false, flagged: false });
 export const coveredCellWithoutMine = coveredCell.and({ mine: false });
 export const coveredCellWithMine = coveredCell.and({ mine: true });
 
@@ -24,7 +20,7 @@ export const revealedCell = baseCell.and({ flagged: false, revealed: true });
 export const revealedCellWithMine = revealedCell.and({ mine: true });
 export const revealedClearCell = revealedCell.and({ mine: false });
 
-export const anyCell = P.union(
+export const cell = P.union(
   coveredCell,
   coveredCellWithMine,
   coveredCellWithoutMine,
@@ -40,7 +36,7 @@ export const gameState = P.shape({
     mines: P.number,
     timeLimit: P.number,
   }),
-  cells: P.array(anyCell),
+  cells: P.array(cell),
   visitedCells: P.set(P.number),
   status: P.union("ready", "playing", "win", "lose"),
   cellsRevealed: P.number,

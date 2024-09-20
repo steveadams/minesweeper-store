@@ -1,8 +1,10 @@
 import seedrandom from "seedrandom";
 import { GameContext, GameStore } from "../types";
 import { setupStore } from "./store";
-import { assert, beforeEach, describe, it } from "vitest";
+import { afterEach, assert, beforeEach, describe, it } from "vitest";
 import { PRESETS } from "../data";
+import { Subscription } from "@xstate/store";
+import { match } from "ts-pattern";
 
 const createTestGame = (): GameStore => setupStore(PRESETS[0].config);
 
@@ -38,7 +40,7 @@ const expectNotToBeRevealed = (store: GameStore, indices: number[]) =>
 const expectToBeRevealedWithAdjacentCount = (
   store: GameStore,
   indices: number[],
-  adjacentMines: number,
+  adjacentMines: number
 ) =>
   indices.forEach((idx) => {
     expectToBeRevealed(store, [idx]);
@@ -49,12 +51,24 @@ const expectStatus = (store: GameStore, status: GameContext["status"]) =>
   expect(store.getSnapshot().context.status).toBe(status);
 
 let store: GameStore;
+let endGameSub: Subscription;
 
 beforeEach(() => {
   // Make Math.random() deterministic in order to predict where mines are placed
   seedrandom("minesweeper", { global: true });
 
   store = createTestGame();
+
+  endGameSub = store.on("endGame", (event) => {
+    match(event.result)
+      .with("win", () => store.send({ type: "win" }))
+      .with("lose", () => store.send({ type: "lose" }))
+      .exhaustive();
+  });
+});
+
+afterEach(() => {
+  endGameSub.unsubscribe();
 });
 
 describe("flagging behaviour", () => {
@@ -162,7 +176,7 @@ describe("reveal behaviour", () => {
     expectToBeRevealedWithAdjacentCount(
       store,
       [0, 1, 2, 3, 4, 8, 9, 13, 14],
-      0,
+      0
     );
     // Expect 1 adjacent mines
     expectToBeRevealedWithAdjacentCount(store, [7, 12, 18, 19], 1);

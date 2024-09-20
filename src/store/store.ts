@@ -25,7 +25,7 @@ const indexToCoordinates = (gridWidth: number, index: number) => ({
 const getValidNeighbourIndices = (
   width: number,
   height: number,
-  index: number,
+  index: number
 ): number[] => {
   const { x, y } = indexToCoordinates(width, index);
 
@@ -45,7 +45,7 @@ const getValidNeighbourIndices = (
     .map(([nx, ny]) => ny * width + nx);
 };
 
-function createGrid(config: GameContext["config"]): Cells {
+const createGrid = (config: GameContext["config"]): Cells => {
   const totalCells = config.width * config.height;
 
   // Create locations for the mines
@@ -67,44 +67,26 @@ function createGrid(config: GameContext["config"]): Cells {
     adjacentMines: getValidNeighbourIndices(
       config.width,
       config.height,
-      index,
+      index
     ).filter((neighbourIndex) => mineIndices.has(neighbourIndex)).length,
   }));
 
   return cells;
-}
+};
 
-const revealMines = (cells: Cells): Cells =>
-  cells.map((cell) =>
-    match(cell)
-      .with(
-        coveredCellWithMine,
-        (c) =>
-          ({
-            ...c,
-            flagged: false,
-            revealed: true,
-          }) as RevealedCell,
-      )
-      .otherwise((c) => c),
-  );
+const playerCanInteract = (ctx: GameContext) =>
+  ctx.status !== "lose" && ctx.status !== "win";
 
-function playerCanInteract(ctx: GameContext) {
-  return ctx.status !== "lose" && ctx.status !== "win";
-}
-
-function configureStoreContext(config: GameContext["config"]): GameContext {
-  return {
-    config,
-    cells: createGrid(config),
-    visitedCells: new Set<number>(),
-    status: "ready",
-    cellsRevealed: 0,
-    flagsLeft: config.mines,
-    playerIsRevealingCell: false,
-    timeElapsed: 0,
-  };
-}
+const configureStoreContext = (config: GameContext["config"]): GameContext => ({
+  config,
+  cells: createGrid(config),
+  visitedCells: new Set<number>(),
+  status: "ready",
+  cellsRevealed: 0,
+  flagsLeft: config.mines,
+  playerIsRevealingCell: false,
+  timeElapsed: 0,
+});
 
 const getCell = (cells: Cells, index: number): Cell => {
   const cell = cells[index];
@@ -126,7 +108,19 @@ export function setupStore(config: GameContext["config"]): GameStore {
       win: { status: "win" },
       lose: (ctx) => ({
         status: "lose",
-        cells: revealMines(ctx.cells),
+        cells: ctx.cells.map((cell) =>
+          match(cell)
+            .with(
+              coveredCellWithMine,
+              (cell) =>
+                ({
+                  ...cell,
+                  flagged: false,
+                  revealed: true,
+                } as RevealedCell)
+            )
+            .otherwise((c) => c)
+        ),
       }),
       revealCell: (ctx, event, { emit }) => {
         if (!playerCanInteract(ctx)) {
@@ -167,7 +161,7 @@ export function setupStore(config: GameContext["config"]): GameStore {
                 const neighbors = getValidNeighbourIndices(
                   ctx.config.width,
                   ctx.config.height,
-                  idx,
+                  idx
                 );
 
                 neighbors.forEach((neighbourIdx) => {
@@ -206,11 +200,7 @@ export function setupStore(config: GameContext["config"]): GameStore {
           })
           .with(coveredCellWithMine, () => {
             emit({ type: "endGame", result: "lose", cause: "You hit a mine." });
-
-            return {
-              cells: revealMines(ctx.cells),
-              status: "lose",
-            } as const;
+            return { status: "lose" as const };
           })
           .otherwise(() => ctx);
       },

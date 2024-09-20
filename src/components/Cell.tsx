@@ -9,11 +9,9 @@ import {
   revealedClearCell,
 } from "../data";
 
-interface BaseButtonProps extends JSX.ButtonHTMLAttributes<HTMLButtonElement> {
-  class?: string;
-}
-
-const BaseButton: Component<BaseButtonProps> = (props) => (
+const BaseButton: Component<JSX.ButtonHTMLAttributes<HTMLButtonElement>> = (
+  props
+) => (
   <button
     {...props}
     class={`flex aspect-square size-10 rounded-sm text-white focus:outline-none focus:ring-2 focus:ring-offset-2 items-center justify-center ${
@@ -33,7 +31,7 @@ type CellComponent = Component<{
 const CoveredCell: CellComponent = ({ index }) => {
   const store = useStore();
   const revealing = useStoreSelector(
-    ({ context }) => context.playerIsRevealingCell,
+    ({ context }) => context.playerIsRevealingCell
   );
 
   const revealCell = () => store.send({ type: "revealCell", index });
@@ -96,7 +94,7 @@ const FlaggedCell: CellComponent = ({ index }) => {
   );
 };
 
-const RevealedBomb: CellComponent = () => {
+const RevealedMine: CellComponent = () => {
   return (
     <BaseButton
       class="bg-red-400 focus:ring-slate-500 dark:bg-red-600"
@@ -125,7 +123,7 @@ export const CellButton: CellComponent = (props) => {
         <RevealedCell {...props} />
       </Match>
       <Match when={isMatching(revealedCellWithMine, cell())} keyed>
-        <RevealedBomb {...props} />
+        <RevealedMine {...props} />
       </Match>
     </Switch>
   );
