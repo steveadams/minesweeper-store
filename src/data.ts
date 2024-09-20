@@ -1,53 +1,29 @@
 import { P } from "ts-pattern";
+import { FaceEmoji, FaceState } from "./types";
 
-export const coveredCell = P.shape({
-  revealed: false,
-  flagged: false,
+const baseCell = P.shape({
+  revealed: P.boolean,
+  flagged: P.boolean,
   mine: P.boolean,
   adjacentMines: P.number,
-} as const);
+});
 
-export const coveredCellWithoutMine = P.shape({
+export const coveredCell = baseCell.and({
   revealed: false,
   flagged: false,
-  mine: false,
-  adjacentMines: P.number,
-} as const);
+});
 
-export const coveredCellWithMine = P.shape({
-  revealed: false,
-  flagged: false,
-  mine: true,
-  adjacentMines: P.number,
-} as const);
+export const coveredCellWithoutMine = coveredCell.and({ mine: false });
+export const coveredCellWithMine = coveredCell.and({ mine: true });
 
-export const flaggedCell = P.shape({
+export const flaggedCell = baseCell.and({
   revealed: false,
   flagged: true,
-  mine: P.boolean,
-  adjacentMines: P.number,
-} as const);
+});
 
-export const revealedCell = P.shape({
-  flagged: false,
-  revealed: true,
-  mine: P.boolean,
-  adjacentMines: P.number,
-} as const);
-
-export const revealedCellWithMine = P.shape({
-  revealed: true,
-  flagged: false,
-  mine: true,
-  adjacentMines: P.number,
-} as const);
-
-export const revealedClearCell = P.shape({
-  revealed: true,
-  flagged: false,
-  mine: false,
-  adjacentMines: P.number,
-} as const);
+export const revealedCell = baseCell.and({ flagged: false, revealed: true });
+export const revealedCellWithMine = revealedCell.and({ mine: true });
+export const revealedClearCell = revealedCell.and({ mine: false });
 
 export const anyCell = P.union(
   coveredCell,
@@ -55,7 +31,7 @@ export const anyCell = P.union(
   coveredCellWithoutMine,
   flaggedCell,
   revealedClearCell,
-  revealedCellWithMine
+  revealedCellWithMine,
 );
 
 export const gameState = P.shape({
@@ -63,10 +39,11 @@ export const gameState = P.shape({
     width: P.number,
     height: P.number,
     mines: P.number,
+    timeLimit: P.number,
   }),
   cells: P.array(anyCell),
   visitedCells: P.set(P.number),
-  gameStatus: P.union("ready", "playing", "win", "game-over"),
+  status: P.union("ready", "playing", "win", "lose"),
   cellsRevealed: P.number,
   flagsLeft: P.number,
   playerIsRevealingCell: P.boolean,
@@ -77,11 +54,8 @@ export const FACES = {
   okay: "🙂",
   scared: "😬",
   win: "😀",
-  gameOver: "😵",
+  lose: "😵",
 } as const;
-
-export type FaceState = keyof typeof FACES;
-export type FaceEmoji = (typeof FACES)[FaceState];
 
 export const getFaceEmoji = (state: FaceState): FaceEmoji => FACES[state];
 
@@ -89,14 +63,14 @@ export const getFaceEmoji = (state: FaceState): FaceEmoji => FACES[state];
 export const PRESETS = [
   {
     name: "Beginner",
-    config: { width: 5, height: 5, mines: 5 },
+    config: { width: 5, height: 5, mines: 5, timeLimit: 999 },
   },
   {
     name: "Intermediate",
-    config: { width: 15, height: 15, mines: 30 },
+    config: { width: 15, height: 15, mines: 30, timeLimit: 999 },
   },
   {
     name: "Advanced",
-    config: { width: 20, height: 20, mines: 50 },
+    config: { width: 20, height: 20, mines: 50, timeLimit: 999 },
   },
 ] as const;

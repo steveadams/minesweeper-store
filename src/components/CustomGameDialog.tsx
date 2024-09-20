@@ -48,6 +48,7 @@ export const CustomDialog: Component<{
       width: Number(formData.get("width")),
       height: Number(formData.get("height")),
       mines: Number(formData.get("mines")),
+      timeLimit: Number(formData.get("timeLimit")),
     };
     submitForm(config);
   };
@@ -98,6 +99,18 @@ export const CustomDialog: Component<{
                 onChange={handleHeightChange}
               />
               <CustomSettingField name="mines" min={1} max={maximumMines} />
+
+              {/* TODO: Add a custom time limit? */}
+              <input
+                id="timeLimit"
+                name="timeLimit"
+                value={999}
+                type="number"
+                required
+                class="hidden"
+                aria-hidden="true"
+              />
+
               <div class="mt-6 flex items-center justify-end gap-x-6">
                 <button
                   type="submit"

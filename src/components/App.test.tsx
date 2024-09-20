@@ -12,7 +12,8 @@ import {
 import seedrandom from "seedrandom";
 
 import App from "./App";
-import { type FaceState, getFaceEmoji, PRESETS } from "../data";
+import { getFaceEmoji, PRESETS } from "../data";
+import { FaceState } from "../types";
 
 const createUser = () =>
   userEvent.setup({
@@ -46,13 +47,13 @@ function expectCellsToBeRevealed(cellIndices: number[]) {
 
 function expectRevealedCellWithAdjacentCount(
   cellIndices: number[],
-  adjacentCount: number
+  adjacentCount: number,
 ) {
   cellIndices.forEach((index) => {
     const cell = getCell(index);
     expect(cell).toHaveAttribute("data-revealed", adjacentCount.toString());
     expect(cell).toHaveTextContent(
-      adjacentCount === 0 ? "" : adjacentCount.toString()
+      adjacentCount === 0 ? "" : adjacentCount.toString(),
     );
   });
 }
@@ -67,7 +68,7 @@ function expectCoveredCell(cellIndices: number[]) {
 function expectCellTypeToBe(
   cell: HTMLElement | undefined,
   type: "covered" | "flagged" | "revealed" | "mine",
-  value?: string
+  value?: string,
 ) {
   expect(cell).toHaveAttribute(`data-${type}`, value);
 }
@@ -153,7 +154,7 @@ describe("game state interactions", () => {
 
     // Same query should result in a cell with a mine
     expectCellTypeToBe(getCell(cellIndexWithMine), "mine");
-    expectFaceToBe("gameOver");
+    expectFaceToBe("lose");
   });
 
   it("tracks time and ends the game at 999 seconds", async () => {
@@ -175,7 +176,7 @@ describe("game state interactions", () => {
     await advanceTimersBy(990_000);
 
     expectTimeToBe("999");
-    expectFaceToBe("gameOver");
+    expectFaceToBe("lose");
   });
 
   it("shows a worried face as a cell is being revealed", async () => {
@@ -355,7 +356,7 @@ describe("game controls and settings", () => {
     await advanceTimersBy(10);
 
     const safeInputValue = Math.floor(
-      (Number(getWidthInput().min) + Number(getWidthInput().max)) / 2
+      (Number(getWidthInput().min) + Number(getWidthInput().max)) / 2,
     ).toString();
     const startGameButton = container.querySelector('button[type="submit"]');
     assert(startGameButton);
@@ -366,7 +367,7 @@ describe("game controls and settings", () => {
 
     await user.type(
       getWidthInput(),
-      (Number(getWidthInput().max) + 10).toString()
+      (Number(getWidthInput().max) + 10).toString(),
     );
     await user.click(startGameButton);
     expect(getWidthInput().validity.rangeOverflow).toBe(true);
@@ -380,7 +381,7 @@ describe("game controls and settings", () => {
     expect(getHeightInput().validity.valid).toBe(false);
     await user.type(
       getHeightInput(),
-      (Number(getHeightInput().min) - 1).toString()
+      (Number(getHeightInput().min) - 1).toString(),
     );
     await user.click(startGameButton);
     expect(getHeightInput().validity.rangeUnderflow).toBe(true);

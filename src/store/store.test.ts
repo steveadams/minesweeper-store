@@ -1,5 +1,5 @@
 import seedrandom from "seedrandom";
-import { Cell, GameContext, GameStore } from "../types";
+import { GameContext, GameStore } from "../types";
 import { setupStore } from "./store";
 import { assert, beforeEach, describe, it } from "vitest";
 import { PRESETS } from "../data";
@@ -38,34 +38,23 @@ const expectNotToBeRevealed = (store: GameStore, indices: number[]) =>
 const expectToBeRevealedWithAdjacentCount = (
   store: GameStore,
   indices: number[],
-  adjacentMines: number
+  adjacentMines: number,
 ) =>
   indices.forEach((idx) => {
     expectToBeRevealed(store, [idx]);
     expect(getCell(store, idx).adjacentMines).toBe(adjacentMines);
   });
 
-const expectGameStatus = (
-  store: GameStore,
-  status: GameContext["gameStatus"]
-) => expect(store.getSnapshot().context.gameStatus).toBe(status);
+const expectStatus = (store: GameStore, status: GameContext["status"]) =>
+  expect(store.getSnapshot().context.status).toBe(status);
 
 let store: GameStore;
-let mineIndices: Set<number>;
 
 beforeEach(() => {
   // Make Math.random() deterministic in order to predict where mines are placed
   seedrandom("minesweeper", { global: true });
 
   store = createTestGame();
-  mineIndices = store
-    .getSnapshot()
-    .context.cells.reduce((indices: Set<number>, cell: Cell, index: number) => {
-      if (cell.mine) {
-        indices.add(index);
-      }
-      return indices;
-    }, new Set<number>());
 });
 
 describe("flagging behaviour", () => {
@@ -173,7 +162,7 @@ describe("reveal behaviour", () => {
     expectToBeRevealedWithAdjacentCount(
       store,
       [0, 1, 2, 3, 4, 8, 9, 13, 14],
-      0
+      0,
     );
     // Expect 1 adjacent mines
     expectToBeRevealedWithAdjacentCount(store, [7, 12, 18, 19], 1);
@@ -194,51 +183,55 @@ describe("reveal behaviour", () => {
 describe("game status behaviour", () => {
   it("should start in ready and shift to playing when a safe cell is revealed", () => {
     // Only these cells need to be revealed to win
-    expectGameStatus(store, "ready");
+    expectStatus(store, "ready");
     revealCell(store, 0);
-    expectGameStatus(store, "playing");
+    expectStatus(store, "playing");
   });
 
   it("should win when all safe cells are revealed", () => {
-    expectGameStatus(store, "ready");
+    expectStatus(store, "ready");
 
     // Only these cells need to be revealed to win
     revealCell(store, 0);
-    expectGameStatus(store, "playing");
+    expectStatus(store, "playing");
     revealCell(store, 16);
-    expectGameStatus(store, "playing");
+    expectStatus(store, "playing");
     revealCell(store, 21);
-    expectGameStatus(store, "playing");
+    expectStatus(store, "playing");
     revealCell(store, 22);
-    expectGameStatus(store, "playing");
+    expectStatus(store, "playing");
     revealCell(store, 24);
-    expectGameStatus(store, "win");
+    expectStatus(store, "win");
   });
 
   it("should lose when a mine is revealed", () => {
-    expectGameStatus(store, "ready");
+    expectStatus(store, "ready");
     revealCell(store, 0);
-    expectGameStatus(store, "playing");
+    expectStatus(store, "playing");
 
+    const mineIndices = store
+      .getSnapshot()
+      .context.cells.map((cell, index) => (cell.mine ? index : -1))
+      .filter((index) => index !== -1);
     const mineCellIndex =
-      Array.from(mineIndices)[Math.floor(Math.random() * mineIndices.size)];
+      mineIndices[Math.floor(Math.random() * mineIndices.length)];
 
     expect(mineCellIndex).toBeDefined();
 
     // It should lose on any cell from the mineIndices set
     revealCell(store, mineCellIndex!);
-    expectGameStatus(store, "game-over");
+    expectStatus(store, "lose");
   });
 });
 
 describe("initialize game behaviour", () => {
   it("should start reset the game correctly", () => {
-    expectGameStatus(store, "ready");
+    expectStatus(store, "ready");
     expect(store.getSnapshot().context.timeElapsed).toBe(0);
     expect(store.getSnapshot().context.cellsRevealed).toBe(0);
     revealCell(store, 0);
     expectToBeRevealed(store, [0, 1, 2, 3]);
-    expectGameStatus(store, "playing");
+    expectStatus(store, "playing");
 
     // Can't test time increments without integrating with a UI, so pretend it's been a few seconds
     store.send({ type: "tick" });
@@ -249,7 +242,7 @@ describe("initialize game behaviour", () => {
     expect(store.getSnapshot().context.cellsRevealed).toBe(16);
 
     store.send({ type: "initialize", config: PRESETS[0].config });
-    expectGameStatus(store, "ready");
+    expectStatus(store, "ready");
     expectNotToBeRevealed(store, [0, 1, 2, 3]);
     expect(store.getSnapshot().context.timeElapsed).toBe(0);
   });
@@ -260,7 +253,7 @@ describe("guards", () => {
     const snapshot1 = store.getSnapshot();
 
     revealCell(store, 0);
-    expectGameStatus(store, "playing");
+    expectStatus(store, "playing");
 
     const snapshot2 = store.getSnapshot();
 
@@ -274,7 +267,7 @@ describe("guards", () => {
 
   it("should prevent revealing or flagging cells after losing", () => {
     revealCell(store, 20);
-    expectGameStatus(store, "game-over");
+    expectStatus(store, "lose");
 
     const snapshot1 = store.getSnapshot();
 
@@ -290,14 +283,14 @@ describe("guards", () => {
   });
 
   it("should prevent revealing or flagging cells after winning", () => {
-    expectGameStatus(store, "ready");
+    expectStatus(store, "ready");
     revealCell(store, 0);
-    expectGameStatus(store, "playing");
+    expectStatus(store, "playing");
     revealCell(store, 16);
     revealCell(store, 21);
     revealCell(store, 22);
     revealCell(store, 24);
-    expectGameStatus(store, "win");
+    expectStatus(store, "win");
 
     const snapshot = store.getSnapshot();
 

@@ -5,7 +5,7 @@ import {
 } from "@xstate/store";
 import { P } from "ts-pattern";
 
-import { anyCell, gameState, revealedCell } from "./data";
+import { anyCell, gameState, FACES, revealedCell } from "./data";
 
 export type RevealedCell = P.infer<typeof revealedCell>;
 export type Cell = P.infer<typeof anyCell>;
@@ -13,25 +13,29 @@ export type Cell = P.infer<typeof anyCell>;
 export type GameContext = P.infer<typeof gameState>;
 export type Cells = GameContext["cells"];
 
-export type GameEventMap = {
+export type GameEvent = {
   initialize: { config: GameContext["config"] };
   startPlaying: object;
-  win: object;
-  gameOver: object;
   revealCell: { index: number };
   toggleFlag: { index: number };
   setIsPlayerRevealing: { to: boolean };
   tick: object;
+  win: object;
+  lose: object;
 };
 
 export type EmittedEvents = {
   type: "endGame";
   result: "win" | "lose";
+  cause: string;
 };
 
 export type GameStore = Store<
   GameContext,
-  ExtractEventsFromPayloadMap<GameEventMap>,
+  ExtractEventsFromPayloadMap<GameEvent>,
   EmittedEvents
 >;
 export type GameSnapshot = SnapshotFromStore<GameStore>;
+
+export type FaceState = keyof typeof FACES;
+export type FaceEmoji = (typeof FACES)[FaceState];

@@ -33,7 +33,7 @@ type CellComponent = Component<{
 const CoveredCell: CellComponent = ({ index }) => {
   const store = useStore();
   const revealing = useStoreSelector(
-    ({ context }) => context.playerIsRevealingCell
+    ({ context }) => context.playerIsRevealingCell,
   );
 
   const revealCell = () => store.send({ type: "revealCell", index });
@@ -107,9 +107,9 @@ const RevealedBomb: CellComponent = () => {
   );
 };
 
-// TODO: Think about implementing something exhaustive here.
-// I don't think it's possible with JSX. Worth a look for sure.
-// It isn't possible to use ts-pattern here unfortunately
+// TODO: Think about implementing something exhaustive here. Maybe Effect can be worked in?
+// I don't think it's possible with SolidJS/JSX. Worth experimenting with though.
+// Issue is specific to "run once" principle of SolidJS
 export const CellButton: CellComponent = (props) => {
   const { cell } = props;
 

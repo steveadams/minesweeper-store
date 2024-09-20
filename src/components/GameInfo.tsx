@@ -6,6 +6,7 @@ import {
   gameIsStarted,
   gameIsWon,
 } from "../store/selectors";
+import { getFaceEmoji } from "../data";
 
 const resetInterval = (interval: number | undefined) => {
   clearInterval(interval);
@@ -19,7 +20,7 @@ export const GameInfo: Component = () => {
   const time = useStoreSelector(({ context }) => context.timeElapsed);
   const face = useStoreSelector(faceEmoji);
   const gameStarted = useStoreSelector(gameIsStarted);
-  const gameOver = useStoreSelector(gameIsOver);
+  const gameLost = useStoreSelector(gameIsOver);
   const gameWon = useStoreSelector(gameIsWon);
 
   let interval: number | undefined;
@@ -31,7 +32,7 @@ export const GameInfo: Component = () => {
   });
 
   createEffect(() => {
-    if (gameOver() || gameWon() || !gameStarted()) {
+    if (gameLost() || gameWon() || !gameStarted()) {
       interval = resetInterval(interval);
     }
   });
@@ -48,7 +49,7 @@ export const GameInfo: Component = () => {
           onClick={() => store.send({ type: "initialize", config: config() })}
           aria-label="face"
         >
-          {face()}
+          {getFaceEmoji(face())}
         </button>
       </div>
       <time role="timer" datetime={`PT${time().toString()}S`}>

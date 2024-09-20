@@ -1,12 +1,16 @@
 import { match } from "ts-pattern";
-import { GameSnapshot, GameContext } from "../types";
-import { getFaceEmoji } from "../data";
+import { GameSnapshot, GameContext, FaceState } from "../types";
 
+// Any of these conditions can be met to determine this. One once of the non-permanent
+// conditions is met, `s.context.status === "playing"` will be triggered by the
+// UI layer and ensure this stays in effect.
 export const gameIsStarted = (s: GameSnapshot) =>
-  s.context.gameStatus === "playing";
+  s.context.status === "playing" ||
+  s.context.cellsRevealed > 0 ||
+  s.context.flagsLeft !== s.context.config.mines;
 
 export const gameIsOver = (s: GameSnapshot) =>
-  s.context.gameStatus === "game-over" || s.context.gameStatus === "win";
+  s.context.status === "lose" || s.context.status === "win";
 
 export const gameIsWon = (s: GameSnapshot) => {
   const { config, cellsRevealed } = s.context;
@@ -15,12 +19,12 @@ export const gameIsWon = (s: GameSnapshot) => {
 };
 
 export const faceEmoji = (s: GameSnapshot) =>
-  match(s.context as GameContext)
+  match<GameContext, FaceState>(s.context)
     .with(
-      { gameStatus: "playing", playerIsRevealingCell: true },
-      { gameStatus: "ready", playerIsRevealingCell: true },
-      () => getFaceEmoji("scared")
+      { status: "playing", playerIsRevealingCell: true },
+      { status: "ready", playerIsRevealingCell: true },
+      () => "scared",
     )
-    .with({ gameStatus: "win" }, () => getFaceEmoji("win"))
-    .with({ gameStatus: "game-over" }, () => getFaceEmoji("gameOver"))
-    .otherwise(() => getFaceEmoji("okay"));
+    .with({ status: "win" }, () => "win")
+    .with({ status: "lose" }, () => "lose")
+    .otherwise(() => "okay");
