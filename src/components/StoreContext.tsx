@@ -1,7 +1,9 @@
-import { createContext, ParentProps, useContext } from "solid-js";
-import { PRESETS, setupStore } from "../store/store";
-import { GameSnapshot, GameStore } from "../types";
 import { useSelector } from "@xstate/store/solid";
+import { createContext, ParentProps, useContext } from "solid-js";
+
+import { setupStore } from "../store/store";
+import { GameSnapshot, GameStore } from "../types";
+import { PRESETS } from "../data";
 
 const StoreContext = createContext<GameStore | undefined>(undefined);
 

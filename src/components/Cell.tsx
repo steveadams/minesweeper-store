@@ -1,14 +1,13 @@
 import { Accessor, Component, JSX, Match, Switch } from "solid-js";
+import type { Cell } from "../types";
+import { useStore, useStoreSelector } from "./StoreContext";
+import { isMatching } from "ts-pattern";
 import {
-  type Cell,
   coveredCell,
   flaggedCell,
   revealedCellWithMine,
   revealedClearCell,
-} from "../types";
-import { useStore, useStoreSelector } from "./StoreContext";
-import { selectPlayerIsRevealing } from "../store/selectors";
-import { isMatching } from "ts-pattern";
+} from "../data";
 
 interface BaseButtonProps extends JSX.ButtonHTMLAttributes<HTMLButtonElement> {
   class?: string;
@@ -33,7 +32,9 @@ type CellComponent = Component<{
 
 const CoveredCell: CellComponent = ({ index }) => {
   const store = useStore();
-  const revealing = useStoreSelector(selectPlayerIsRevealing);
+  const revealing = useStoreSelector(
+    ({ context }) => context.playerIsRevealingCell
+  );
 
   const revealCell = () => store.send({ type: "revealCell", index });
 

@@ -1,35 +1,16 @@
 import { createStore } from "@xstate/store";
 import { match } from "ts-pattern";
 
-import {
-  coveredCellWithMine,
-  coveredCellWithoutMine,
-  type Cell,
-  type Configuration,
-  type GameEventMap,
-  type Cells,
-  type Emitted,
-  type GameContext,
-  type GameStore,
-  type RevealedCell,
-  type ToggleFlagEvent,
-  type RevealCellEvent,
+import type {
+  Cell,
+  GameEventMap,
+  Cells,
+  EmittedEvents,
+  GameContext,
+  GameStore,
+  RevealedCell,
 } from "../types";
-
-export const PRESETS = [
-  {
-    name: "Beginner",
-    config: { width: 5, height: 5, mines: 5 },
-  },
-  {
-    name: "Intermediate",
-    config: { width: 15, height: 15, mines: 30 },
-  },
-  {
-    name: "Advanced",
-    config: { width: 20, height: 20, mines: 50 },
-  },
-] as const;
+import { coveredCellWithMine, coveredCellWithoutMine } from "../data";
 
 // Convert (x, y) coordinates to an index for a 1D array
 export const coordinatesToIndex = (gridWidth: number, x: number, y: number) =>
@@ -44,7 +25,7 @@ const indexToCoordinates = (gridWidth: number, index: number) => ({
 const getValidNeighbourIndices = (
   width: number,
   height: number,
-  index: number,
+  index: number
 ): number[] => {
   const { x, y } = indexToCoordinates(width, index);
 
@@ -64,7 +45,7 @@ const getValidNeighbourIndices = (
     .map(([nx, ny]) => ny * width + nx);
 };
 
-function createGrid(config: Configuration): Cells {
+function createGrid(config: GameContext["config"]): Cells {
   const totalCells = config.width * config.height;
 
   // Create locations for the mines
@@ -86,80 +67,33 @@ function createGrid(config: Configuration): Cells {
     adjacentMines: getValidNeighbourIndices(
       config.width,
       config.height,
-      index,
+      index
     ).filter((neighbourIndex) => mineIndices.has(neighbourIndex)).length,
   }));
 
   return cells;
 }
 
-function toggleFlagLogic(
-  ctx: GameContext,
-  { index }: ToggleFlagEvent,
-): { flagsLeft: number; cells: Cells; gameStatus: GameContext["gameStatus"] } {
-  if (!playerCanInteract(ctx)) {
-    return ctx;
-  }
-
-  const cell = ctx.cells[index];
-
-  if (!cell) {
-    return ctx;
-  }
-
-  const flagDelta = cell.flagged ? 1 : -1;
-  const updatedCells = [...ctx.cells];
-
-  if (!cell.flagged && ctx.flagsLeft === 0) {
-    return ctx;
-  }
-
-  updatedCells[index] = {
-    ...cell,
-    revealed: false,
-    flagged: !cell.flagged,
-  } as Cell;
-
-  return {
-    flagsLeft: ctx.flagsLeft + flagDelta,
-    cells: updatedCells,
-    gameStatus: ctx.gameStatus === "ready" ? "playing" : ctx.gameStatus,
-  };
-}
+const revealMines = (cells: Cells): Cells =>
+  cells.map((cell) =>
+    match(cell)
+      .with(
+        coveredCellWithMine,
+        (c) =>
+          ({
+            ...c,
+            flagged: false,
+            revealed: true,
+          } as RevealedCell)
+      )
+      .otherwise((c) => c)
+  );
 
 function playerCanInteract(ctx: GameContext) {
   return ctx.gameStatus !== "game-over" && ctx.gameStatus !== "win";
 }
 
-function revealMines(cells: Cells): Cells {
-  const updatedCells = [...cells];
-
-  updatedCells.forEach((cell, index) => {
-    if (cell.mine && !cell.revealed) {
-      updatedCells[index] = {
-        ...cell,
-        flagged: false,
-        revealed: true,
-      } as RevealedCell;
-    }
-  });
-
-  return updatedCells;
-}
-
-// Increment the time elapsed and return the new state
-// Trigger game over if the game has been running for 999 seconds
-function tickLogic({
-  timeElapsed,
-}: GameContext): Pick<GameContext, "timeElapsed" | "gameStatus"> {
-  const nextTick = timeElapsed + 1;
-  return {
-    timeElapsed: nextTick,
-    gameStatus: nextTick < 999 ? "playing" : "game-over",
-  };
-}
-
-function configureStoreContext(config: Configuration): GameContext {
+function configureStoreContext(config: GameContext["config"]): GameContext {
   return {
     config,
     cells: createGrid(config),
@@ -172,9 +106,9 @@ function configureStoreContext(config: Configuration): GameContext {
   };
 }
 
-export function setupStore(config: Configuration): GameStore {
-  return createStore<GameContext, GameEventMap, { emitted: Emitted }>({
-    types: {} as { emitted: Emitted },
+export function setupStore(config: GameContext["config"]): GameStore {
+  return createStore<GameContext, GameEventMap, { emitted: EmittedEvents }>({
+    types: {} as { emitted: EmittedEvents },
     context: configureStoreContext(config),
     on: {
       initialize: (_, event) => configureStoreContext(event.config),
@@ -184,19 +118,19 @@ export function setupStore(config: Configuration): GameStore {
         gameStatus: "game-over",
         cells: revealMines(ctx.cells),
       }),
-      revealCell: (ctx: GameContext, event: RevealCellEvent, { emit }) => {
+      revealCell: (ctx, event, { emit }) => {
         if (!playerCanInteract(ctx)) {
           console.log("Reveal cell not allowed");
           return ctx;
         }
 
         const cell = ctx.cells[event.index];
-        let cellsRevealed = 0;
+        let revealed = 0;
 
         return match(cell)
           .with(coveredCellWithoutMine, () => {
             const updatedCells = [...ctx.cells];
-            const visitedCells = new Set<number>(ctx.visitedCells);
+            const visited = new Set<number>(ctx.visitedCells);
             const stack: number[] = [event.index];
 
             while (stack.length > 0) {
@@ -208,22 +142,22 @@ export function setupStore(config: Configuration): GameStore {
 
               const cell = updatedCells[idx];
 
-              if (!cell || cell.flagged || visitedCells.has(idx)) {
+              if (!cell || cell.flagged || visited.has(idx)) {
                 continue;
               }
 
-              visitedCells.add(idx);
+              visited.add(idx);
 
               const revealedCell = { ...cell, revealed: true } as RevealedCell;
               updatedCells[idx] = revealedCell;
-              cellsRevealed++;
+              revealed++;
 
               // If the cell has no adjacent mines, reveal neighbors
               if (revealedCell.adjacentMines === 0) {
                 const neighbors = getValidNeighbourIndices(
                   ctx.config.width,
                   ctx.config.height,
-                  idx,
+                  idx
                 );
 
                 neighbors.forEach((neighbourIdx) => {
@@ -235,34 +169,31 @@ export function setupStore(config: Configuration): GameStore {
                   }
 
                   // Add neighbors to the stack if they haven't been visited or flagged
-                  if (
-                    !visitedCells.has(neighbourIdx) &&
-                    !neighbourCell.flagged
-                  ) {
+                  if (!visited.has(neighbourIdx) && !neighbourCell.flagged) {
                     stack.push(neighbourIdx);
                   }
                 });
               }
             }
 
-            const totalCellsRevealed = ctx.cellsRevealed + cellsRevealed;
+            const totalCellsRevealed = ctx.cellsRevealed + revealed;
             const playerWon =
               totalCellsRevealed ===
               ctx.config.width * ctx.config.height - ctx.config.mines;
 
             if (playerWon) {
-              emit({ type: "win" });
+              emit({ type: "endGame", result: "win" });
             }
 
             return {
               cells: updatedCells,
               cellsRevealed: totalCellsRevealed,
-              visitedCells: visitedCells,
+              visitedCells: visited,
               gameStatus: playerWon ? "win" : "playing",
             };
           })
           .with(coveredCellWithMine, () => {
-            emit({ type: "gameOver" });
+            emit({ type: "endGame", result: "lose" });
 
             return {
               cells: revealMines(ctx.cells),
@@ -271,7 +202,36 @@ export function setupStore(config: Configuration): GameStore {
           })
           .otherwise(() => ({}));
       },
-      toggleFlag: toggleFlagLogic,
+      toggleFlag: (ctx, event) => {
+        if (!playerCanInteract(ctx)) {
+          return ctx;
+        }
+
+        const cell = ctx.cells[event.index];
+
+        if (!cell) {
+          return ctx;
+        }
+
+        const flagDelta = cell.flagged ? 1 : -1;
+        const updatedCells = [...ctx.cells];
+
+        if (!cell.flagged && ctx.flagsLeft === 0) {
+          return ctx;
+        }
+
+        updatedCells[event.index] = {
+          ...cell,
+          revealed: false,
+          flagged: !cell.flagged,
+        } as Cell;
+
+        return {
+          flagsLeft: ctx.flagsLeft + flagDelta,
+          cells: updatedCells,
+          gameStatus: ctx.gameStatus === "ready" ? "playing" : ctx.gameStatus,
+        };
+      },
       setIsPlayerRevealing: (ctx, event) => {
         if (!playerCanInteract(ctx)) {
           return ctx;
@@ -281,7 +241,14 @@ export function setupStore(config: Configuration): GameStore {
           playerIsRevealingCell: event.to,
         };
       },
-      tick: tickLogic,
+      tick: ({ timeElapsed }) => {
+        const inc = timeElapsed + 1;
+
+        return {
+          timeElapsed: inc,
+          gameStatus: inc < 999 ? "playing" : "game-over",
+        };
+      },
     },
   });
 }

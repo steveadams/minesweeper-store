@@ -1,67 +1,54 @@
 import seedrandom from "seedrandom";
 import { Cell, GameContext, GameStore } from "../types";
 import { setupStore } from "./store";
-import { beforeEach, describe, it } from "vitest";
+import { assert, beforeEach, describe, it } from "vitest";
+import { PRESETS } from "../data";
 
-const testGameConfig = { width: 5, height: 5, mines: 5 };
-function create5x5x5Game(): GameStore {
-  return setupStore(testGameConfig);
-}
+const createTestGame = (): GameStore => setupStore(PRESETS[0].config);
 
-function getCell(store: GameStore, index: number) {
-  return store.getSnapshot().context.cells[index];
-}
+const getCell = (store: GameStore, idx: number) => {
+  const cell = store.getSnapshot().context.cells[idx];
+  assert(cell);
 
-function revealCell(store: GameStore, index: number) {
+  return cell;
+};
+
+const revealCell = (store: GameStore, index: number) =>
   store.send({ type: "revealCell", index: index });
-}
 
-function expectToBeRevealed(store: GameStore, indices: number[]) {
-  for (const index of indices) {
-    expect(getCell(store, index)!.revealed).toBe(true);
-  }
-}
+const expectToBeRevealed = (store: GameStore, indices: number[]) =>
+  indices.forEach((idx) => expect(getCell(store, idx).revealed).toBe(true));
 
-function toggleFlag(store: GameStore, index: number) {
-  store.send({ type: "toggleFlag", index: index });
-}
+const toggleFlag = (store: GameStore, idx: number) =>
+  store.send({ type: "toggleFlag", index: idx });
 
-function expectFlagsLeft(store: GameStore, flagsLeft: number) {
-  expect(store.getSnapshot().context.flagsLeft).toBe(flagsLeft);
-}
+const expectFlagsLeft = (store: GameStore, flags: number) =>
+  expect(store.getSnapshot().context.flagsLeft).toBe(flags);
 
-function expectToBeFlagged(store: GameStore, indices: number[]) {
-  for (const index of indices) {
-    expect(getCell(store, index)!.flagged).toBe(true);
-  }
-}
+const expectToBeFlagged = (store: GameStore, indices: number[]) => {
+  indices.forEach((index) => expect(getCell(store, index).flagged).toBe(true));
+};
 
-function expectToBeUnflagged(store: GameStore, indices: number[]) {
-  for (const index of indices) {
-    expect(getCell(store, index)!.flagged).toBe(false);
-  }
-}
+const expectToBeUnflagged = (store: GameStore, indices: number[]) =>
+  indices.forEach((idx) => expect(getCell(store, idx).flagged).toBe(false));
 
-function expectNotToBeRevealed(store: GameStore, indices: number[]) {
-  for (const index of indices) {
-    expect(getCell(store, index)!.revealed).toBe(false);
-  }
-}
+const expectNotToBeRevealed = (store: GameStore, indices: number[]) =>
+  indices.forEach((idx) => expect(getCell(store, idx).revealed).toBe(false));
 
-function expectToBeRevealedWithAdjacentCount(
+const expectToBeRevealedWithAdjacentCount = (
   store: GameStore,
   indices: number[],
-  adjacentMines: number,
-) {
-  for (const index of indices) {
-    expectToBeRevealed(store, [index]);
-    expect(getCell(store, index)!.adjacentMines).toBe(adjacentMines);
-  }
-}
+  adjacentMines: number
+) =>
+  indices.forEach((idx) => {
+    expectToBeRevealed(store, [idx]);
+    expect(getCell(store, idx).adjacentMines).toBe(adjacentMines);
+  });
 
-function expectGameStatus(store: GameStore, status: GameContext["gameStatus"]) {
-  expect(store.getSnapshot().context.gameStatus).toBe(status);
-}
+const expectGameStatus = (
+  store: GameStore,
+  status: GameContext["gameStatus"]
+) => expect(store.getSnapshot().context.gameStatus).toBe(status);
 
 let store: GameStore;
 let mineIndices: Set<number>;
@@ -70,7 +57,7 @@ beforeEach(() => {
   // Make Math.random() deterministic in order to predict where mines are placed
   seedrandom("minesweeper", { global: true });
 
-  store = create5x5x5Game();
+  store = createTestGame();
   mineIndices = store
     .getSnapshot()
     .context.cells.reduce((indices: Set<number>, cell: Cell, index: number) => {
@@ -186,7 +173,7 @@ describe("reveal behaviour", () => {
     expectToBeRevealedWithAdjacentCount(
       store,
       [0, 1, 2, 3, 4, 8, 9, 13, 14],
-      0,
+      0
     );
     // Expect 1 adjacent mines
     expectToBeRevealedWithAdjacentCount(store, [7, 12, 18, 19], 1);
@@ -261,7 +248,7 @@ describe("initialize game behaviour", () => {
     expect(store.getSnapshot().context.timeElapsed).toBe(3);
     expect(store.getSnapshot().context.cellsRevealed).toBe(16);
 
-    store.send({ type: "initialize", config: testGameConfig });
+    store.send({ type: "initialize", config: PRESETS[0].config });
     expectGameStatus(store, "ready");
     expectNotToBeRevealed(store, [0, 1, 2, 3]);
     expect(store.getSnapshot().context.timeElapsed).toBe(0);

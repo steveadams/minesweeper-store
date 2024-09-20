@@ -12,8 +12,7 @@ import {
 import seedrandom from "seedrandom";
 
 import App from "./App";
-import { face } from "../types";
-import { PRESETS } from "../store/store";
+import { type FaceState, getFaceEmoji, PRESETS } from "../data";
 
 const createUser = () =>
   userEvent.setup({
@@ -47,13 +46,13 @@ function expectCellsToBeRevealed(cellIndices: number[]) {
 
 function expectRevealedCellWithAdjacentCount(
   cellIndices: number[],
-  adjacentCount: number,
+  adjacentCount: number
 ) {
   cellIndices.forEach((index) => {
     const cell = getCell(index);
     expect(cell).toHaveAttribute("data-revealed", adjacentCount.toString());
     expect(cell).toHaveTextContent(
-      adjacentCount === 0 ? "" : adjacentCount.toString(),
+      adjacentCount === 0 ? "" : adjacentCount.toString()
     );
   });
 }
@@ -68,13 +67,13 @@ function expectCoveredCell(cellIndices: number[]) {
 function expectCellTypeToBe(
   cell: HTMLElement | undefined,
   type: "covered" | "flagged" | "revealed" | "mine",
-  value?: string,
+  value?: string
 ) {
   expect(cell).toHaveAttribute(`data-${type}`, value);
 }
 
-const expectFaceToBe = (faceKey: keyof typeof face) =>
-  expect(getStatus()).toHaveTextContent(face[faceKey]);
+const expectFaceToBe = (face: FaceState) =>
+  expect(getStatus()).toHaveTextContent(getFaceEmoji(face));
 
 type Digit = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 function expectTimeToBe(time: `${Digit}${Digit}${Digit}`) {
@@ -356,7 +355,7 @@ describe("game controls and settings", () => {
     await advanceTimersBy(10);
 
     const safeInputValue = Math.floor(
-      (Number(getWidthInput().min) + Number(getWidthInput().max)) / 2,
+      (Number(getWidthInput().min) + Number(getWidthInput().max)) / 2
     ).toString();
     const startGameButton = container.querySelector('button[type="submit"]');
     assert(startGameButton);
@@ -367,7 +366,7 @@ describe("game controls and settings", () => {
 
     await user.type(
       getWidthInput(),
-      (Number(getWidthInput().max) + 10).toString(),
+      (Number(getWidthInput().max) + 10).toString()
     );
     await user.click(startGameButton);
     expect(getWidthInput().validity.rangeOverflow).toBe(true);
@@ -381,7 +380,7 @@ describe("game controls and settings", () => {
     expect(getHeightInput().validity.valid).toBe(false);
     await user.type(
       getHeightInput(),
-      (Number(getHeightInput().min) - 1).toString(),
+      (Number(getHeightInput().min) - 1).toString()
     );
     await user.click(startGameButton);
     expect(getHeightInput().validity.rangeUnderflow).toBe(true);

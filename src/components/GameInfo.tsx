@@ -1,13 +1,10 @@
 import { Component, createEffect, onCleanup } from "solid-js";
 import { useStore, useStoreSelector } from "./StoreContext";
 import {
-  selectConfig,
-  selectFace,
-  selectFlagsLeft,
-  selectGameIsOver,
-  selectGameIsStarted,
-  selectGameIsWon,
-  selectTimeElapsed,
+  faceEmoji,
+  gameIsOver,
+  gameIsStarted,
+  gameIsWon,
 } from "../store/selectors";
 
 const resetInterval = (interval: number | undefined) => {
@@ -17,24 +14,24 @@ const resetInterval = (interval: number | undefined) => {
 
 export const GameInfo: Component = () => {
   const store = useStore();
-  const config = useStoreSelector(selectConfig);
-  const face = useStoreSelector(selectFace);
-  const flagsLeft = useStoreSelector(selectFlagsLeft);
-  const time = useStoreSelector(selectTimeElapsed);
-  const gameIsStarted = useStoreSelector(selectGameIsStarted);
-  const gameIsOver = useStoreSelector(selectGameIsOver);
-  const gameIsWon = useStoreSelector(selectGameIsWon);
+  const config = useStoreSelector(({ context }) => context.config);
+  const flagsLeft = useStoreSelector(({ context }) => context.flagsLeft);
+  const time = useStoreSelector(({ context }) => context.timeElapsed);
+  const face = useStoreSelector(faceEmoji);
+  const gameStarted = useStoreSelector(gameIsStarted);
+  const gameOver = useStoreSelector(gameIsOver);
+  const gameWon = useStoreSelector(gameIsWon);
 
   let interval: number | undefined;
 
   createEffect(() => {
-    if (gameIsStarted()) {
+    if (gameStarted()) {
       interval = window.setInterval(() => store.send({ type: "tick" }), 1000);
     }
   });
 
   createEffect(() => {
-    if (gameIsOver() || gameIsWon() || !gameIsStarted()) {
+    if (gameOver() || gameWon() || !gameStarted()) {
       interval = resetInterval(interval);
     }
   });

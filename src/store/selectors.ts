@@ -1,43 +1,26 @@
 import { match } from "ts-pattern";
 import { GameSnapshot, GameContext } from "../types";
+import { getFaceEmoji } from "../data";
 
-export const selectGridWidth = (s: GameSnapshot) => s.context.config.width;
-export const selectGameIsStarted = (s: GameSnapshot) =>
+export const gameIsStarted = (s: GameSnapshot) =>
   s.context.gameStatus === "playing";
 
-export const selectGameIsOver = (s: GameSnapshot) =>
+export const gameIsOver = (s: GameSnapshot) =>
   s.context.gameStatus === "game-over" || s.context.gameStatus === "win";
 
-export const selectCells = (s: GameSnapshot) => s.context.cells;
-
-export const selectPlayerIsRevealing = (s: GameSnapshot) =>
-  s.context.playerIsRevealingCell;
-
-export const selectFlagsLeft = (s: GameSnapshot) => s.context.flagsLeft;
-export const selectTimeElapsed = (s: GameSnapshot) => s.context.timeElapsed;
-
-export const selectGameIsWon = (s: GameSnapshot) => {
+export const gameIsWon = (s: GameSnapshot) => {
   const { config, cellsRevealed } = s.context;
 
   return cellsRevealed === config.width * config.height - config.mines;
 };
 
-export const selectConfig = (s: GameSnapshot) => s.context.config;
-
-export const face: Record<string, string> = {
-  okay: "🙂",
-  scared: "😬",
-  win: "😀",
-  gameOver: "😵",
-};
-
-export const selectFace = (s: GameSnapshot) =>
+export const faceEmoji = (s: GameSnapshot) =>
   match(s.context as GameContext)
     .with(
       { gameStatus: "playing", playerIsRevealingCell: true },
       { gameStatus: "ready", playerIsRevealingCell: true },
-      () => face["scared"],
+      () => getFaceEmoji("scared")
     )
-    .with({ gameStatus: "win" }, () => face["win"])
-    .with({ gameStatus: "game-over" }, () => face["gameOver"])
-    .otherwise(() => face["okay"]);
+    .with({ gameStatus: "win" }, () => getFaceEmoji("win"))
+    .with({ gameStatus: "game-over" }, () => getFaceEmoji("gameOver"))
+    .otherwise(() => getFaceEmoji("okay"));
