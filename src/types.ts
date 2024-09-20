@@ -119,13 +119,12 @@ export type GameEventMap = {
 
 export type Emitted =
   | {
-      type: "game-over";
+      type: "gameOver";
     }
   | {
       type: "win";
     };
 
 export type GameEvent = ExtractEventsFromPayloadMap<GameEventMap>;
-// TODO: Improve TEmitted type
 export type GameStore = Store<GameContext, GameEvent, Emitted>;
 export type GameSnapshot = SnapshotFromStore<GameStore>;

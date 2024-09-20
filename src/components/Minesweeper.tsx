@@ -1,5 +1,6 @@
 import type { Accessor, Component } from "solid-js";
-import { createMemo, createSignal, Index } from "solid-js";
+import { createMemo, createSignal, Index, onCleanup, onMount } from "solid-js";
+import { toast } from "solid-sonner";
 
 import { useStore } from "./StoreContext";
 import { GameInfo } from "./GameInfo";
@@ -137,6 +138,23 @@ const CustomDialog: Component<{
 export const Minesweeper: Component = () => {
   const store = useStore();
   const [isDialogOpen, setIsDialogOpen] = createSignal(false);
+
+  onMount(() => {
+    const winSub = store.on("win", () => {
+      console.log("win");
+      toast.custom(<div>You win 😀</div>);
+    });
+
+    const gameOverSub = store.on("gameOver", () => {
+      console.log("game over");
+      toast.error("Game over 😭");
+    });
+
+    onCleanup(() => {
+      winSub.unsubscribe();
+      gameOverSub.unsubscribe();
+    });
+  });
 
   return (
     <div class="flex flex-col gap-y-6 py-6">

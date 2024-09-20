@@ -49,7 +49,7 @@ export const GameInfo: Component = () => {
       <div id="game-status">
         <button
           onClick={() => store.send({ type: "initialize", config: config() })}
-          role="status"
+          aria-label="face"
         >
           {face()}
         </button>

@@ -131,87 +131,6 @@ function playerCanInteract(ctx: GameContext) {
   return ctx.gameStatus !== "game-over" && ctx.gameStatus !== "win";
 }
 
-function revealCellLogic(ctx: GameContext, event: RevealCellEvent) {
-  if (!playerCanInteract(ctx)) {
-    console.log("Reveal cell not allowed");
-    return ctx;
-  }
-
-  const cell = ctx.cells[event.index];
-  let cellsRevealed = 0;
-
-  return match(cell)
-    .with(coveredCellWithoutMine, () => {
-      const updatedCells = [...ctx.cells];
-      const visitedCells = new Set<number>(ctx.visitedCells);
-      const stack: number[] = [event.index];
-
-      while (stack.length > 0) {
-        const idx = stack.pop();
-
-        if (idx === undefined) {
-          continue;
-        }
-
-        const cell = updatedCells[idx];
-
-        if (!cell) {
-          continue;
-        }
-
-        if (visitedCells.has(idx) || cell.flagged) {
-          continue;
-        }
-
-        visitedCells.add(idx);
-
-        const revealedCell = { ...cell, revealed: true } as RevealedCell;
-        updatedCells[idx] = revealedCell;
-        cellsRevealed++;
-
-        // If the cell has no adjacent mines, reveal neighbors
-        if (revealedCell.adjacentMines === 0) {
-          const neighbors = getValidNeighbourIndices(
-            ctx.config.width,
-            ctx.config.height,
-            idx,
-          );
-
-          neighbors.forEach((neighbourIdx) => {
-            const neighbourCell = updatedCells[neighbourIdx];
-
-            if (!neighbourCell) {
-              console.log("Neighbor cell not found");
-              return;
-            }
-
-            // Add neighbors to the stack if they haven't been visited or flagged
-            if (!visitedCells.has(neighbourIdx) && !neighbourCell.flagged) {
-              stack.push(neighbourIdx);
-            }
-          });
-        }
-      }
-
-      const totalCellsRevealed = ctx.cellsRevealed + cellsRevealed;
-      const playerWon =
-        totalCellsRevealed ===
-        ctx.config.width * ctx.config.height - ctx.config.mines;
-
-      return {
-        cells: updatedCells,
-        cellsRevealed: totalCellsRevealed,
-        visitedCells: visitedCells,
-        gameStatus: playerWon ? "win" : "playing",
-      };
-    })
-    .with(coveredCellWithMine, () => ({
-      cells: revealMines(ctx.cells),
-      gameStatus: "game-over",
-    }))
-    .otherwise(() => ({}));
-}
-
 function revealMines(cells: Cells): Cells {
   const updatedCells = [...cells];
 
@@ -265,7 +184,93 @@ export function setupStore(config: Configuration): GameStore {
         gameStatus: "game-over",
         cells: revealMines(ctx.cells),
       }),
-      revealCell: revealCellLogic,
+      revealCell: (ctx: GameContext, event: RevealCellEvent, { emit }) => {
+        if (!playerCanInteract(ctx)) {
+          console.log("Reveal cell not allowed");
+          return ctx;
+        }
+
+        const cell = ctx.cells[event.index];
+        let cellsRevealed = 0;
+
+        return match(cell)
+          .with(coveredCellWithoutMine, () => {
+            const updatedCells = [...ctx.cells];
+            const visitedCells = new Set<number>(ctx.visitedCells);
+            const stack: number[] = [event.index];
+
+            while (stack.length > 0) {
+              const idx = stack.pop();
+
+              if (idx === undefined) {
+                continue;
+              }
+
+              const cell = updatedCells[idx];
+
+              if (!cell || cell.flagged || visitedCells.has(idx)) {
+                continue;
+              }
+
+              visitedCells.add(idx);
+
+              const revealedCell = { ...cell, revealed: true } as RevealedCell;
+              updatedCells[idx] = revealedCell;
+              cellsRevealed++;
+
+              // If the cell has no adjacent mines, reveal neighbors
+              if (revealedCell.adjacentMines === 0) {
+                const neighbors = getValidNeighbourIndices(
+                  ctx.config.width,
+                  ctx.config.height,
+                  idx,
+                );
+
+                neighbors.forEach((neighbourIdx) => {
+                  const neighbourCell = updatedCells[neighbourIdx];
+
+                  if (!neighbourCell) {
+                    console.log("Neighbor cell not found");
+                    return;
+                  }
+
+                  // Add neighbors to the stack if they haven't been visited or flagged
+                  if (
+                    !visitedCells.has(neighbourIdx) &&
+                    !neighbourCell.flagged
+                  ) {
+                    stack.push(neighbourIdx);
+                  }
+                });
+              }
+            }
+
+            const totalCellsRevealed = ctx.cellsRevealed + cellsRevealed;
+            const playerWon =
+              totalCellsRevealed ===
+              ctx.config.width * ctx.config.height - ctx.config.mines;
+
+            if (playerWon) {
+              emit({ type: "win" });
+            }
+
+            return {
+              cells: updatedCells,
+              cellsRevealed: totalCellsRevealed,
+              visitedCells: visitedCells,
+              gameStatus: playerWon ? "win" : "playing",
+            };
+          })
+          .with(coveredCellWithMine, () => {
+            emit({ type: "gameOver" });
+
+            return {
+              cells: revealMines(ctx.cells),
+              gameStatus: "game-over",
+            };
+          })
+          .otherwise(() => ({}));
+      },
       toggleFlag: toggleFlagLogic,
       setIsPlayerRevealing: (ctx, event) => {
         if (!playerCanInteract(ctx)) {

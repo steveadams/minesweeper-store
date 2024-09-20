@@ -27,7 +27,7 @@ const getCell = (index: number) => {
 };
 
 const getTimer = () => screen.getByRole("timer");
-const getStatus = () => screen.getByRole("status");
+const getStatus = () => screen.getByRole("button", { name: "face" });
 const getFlags = () => screen.getByRole("meter");
 
 // TODO: This is not very thorough
