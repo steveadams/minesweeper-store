@@ -16,7 +16,7 @@ const App: Component = () => (
             target="_blank"
             class="mt-1"
           >
-            Build Minesweeper with a Reactive Store
+            Building Minesweeper with a @xstate/store
           </a>
         </p>
         <ul class="flex gap-4 text-sm">
