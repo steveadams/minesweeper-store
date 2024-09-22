@@ -12,7 +12,7 @@ const App: Component = () => (
         <p>
           <span>Learn more: </span>
           <a
-            href="https://steve-adams.me/minesweeper-with-a-reactive-store"
+            href="https://steve-adams.me/building-minesweeper-with-xstate-store/"
             target="_blank"
             class="mt-1"
           >
